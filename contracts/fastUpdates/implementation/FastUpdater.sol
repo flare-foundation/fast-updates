@@ -4,7 +4,7 @@ pragma solidity 0.8.18;
 import { FastUpdaters } from "./FastUpdaters.sol";
 import { FastUpdateManager } from "./FastUpdateManager.sol";
 import { Deltas } from "../lib/Deltas.sol";
-import { ECPoint, SortitionRound, SortitionCredential } from "../lib/Sortition.sol";
+import { ECPoint, ECPoint2, SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
 
 contract FastUpdater {
     FastUpdaters private fastUpdaters;
@@ -22,8 +22,9 @@ contract FastUpdater {
         uint blocksAgo = block.number - sortitionBlock;
         SortitionRound storage sortitionRound = activeSortitionRounds[blocksAgo];
         ECPoint memory publicKey = fastUpdaters.sortitionPublicKey(msg.sender);
+        ECPoint2 memory basePoint = fastUpdateManager.getECBasePoint();
 
-        verifySortitionCredential(sortitionRound, publicKey, sortitionCredential);
+        verifySortitionCredential(sortitionRound, publicKey, basePoint, sortitionCredential);
         applyUpdates(deltas);
     }
 
@@ -53,14 +54,6 @@ contract FastUpdater {
         int ap = int(uint(anchorPrice));
         int pd = int(feedDelta) * totalUnitDelta;
         return ap + pd;
-    }
-
-    function verifySortitionCredential(
-        SortitionRound storage sortitionRound,
-        ECPoint memory publicKey,
-        SortitionCredential calldata sortitionCredential
-    ) private {
-
     }
 
     function applyUpdates(
