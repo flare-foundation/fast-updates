@@ -12,7 +12,41 @@ contract FastUpdater {
 
     uint32[1000] private anchorPrices;
     int8[1000] private totalUnitDeltas; // maintained so that the true price is never negative, nor overflows
+
+    // A circular buffer
     SortitionRound[] private activeSortitionRounds;
+    function ix(uint i) private view returns (uint) {
+        return (i + block.number) % activeSortitionRounds.length;
+    }
+    function getSortitionRound(uint i) private view returns (SortitionRound storage) {
+        assert(i < activeSortitionRounds.length);
+        return activeSortitionRounds[ix(i)];
+    }
+    function setCurrentSortitionRound(SortitionRound memory x) private {
+        activeSortitionRounds[ix(0)] = x;
+    }
+    function setSubmissionWindow(uint w) private {
+        delete activeSortitionRounds;
+        for (uint i = 0; i < w; ++i) {
+            activeSortitionRounds.push();
+        }
+    }
+
+    // Called by Flare daemon at the end of each block
+    function finalizeBlock(bool newSeed) public {
+        uint numParticipants = fastUpdaters.numParticipants();
+        uint cutoff = fastUpdateManager.getScoreCutoff(numParticipants);
+        uint seed = newSeed ? fastUpdateManager.baseSeed() : getSortitionRound(0).seed + 1;
+        setCurrentSortitionRound(SortitionRound(seed, cutoff));
+    }
+
+    function setFastUpdaters(FastUpdaters addr) public { // onlyGovernance
+        fastUpdaters = addr;
+    }
+
+    function setFastUpdateManager(FastUpdateManager addr) public { // onlyGovernance
+        fastUpdateManager = addr;
+    }
 
     function submitUpdates(
         uint64 sortitionBlock,
@@ -20,7 +54,7 @@ contract FastUpdater {
         Deltas calldata deltas
     ) public {
         uint blocksAgo = block.number - sortitionBlock;
-        SortitionRound storage sortitionRound = activeSortitionRounds[blocksAgo];
+        SortitionRound storage sortitionRound = getSortitionRound(blocksAgo);
         ECPoint memory publicKey = fastUpdaters.sortitionPublicKey(msg.sender);
         ECPoint2 memory basePoint = fastUpdateManager.getECBasePoint();
 
