@@ -34,7 +34,7 @@ contract FastUpdater {
 
     // Called by Flare daemon at the end of each block
     function finalizeBlock(bool newSeed) public {
-        uint numParticipants = fastUpdaters.numParticipants();
+        uint8 numParticipants = fastUpdaters.numParticipants();
         uint cutoff = fastUpdateManager.getScoreCutoff(numParticipants);
         uint seed = newSeed ? fastUpdateManager.baseSeed() : getSortitionRound(0).seed + 1;
         setCurrentSortitionRound(SortitionRound(seed, cutoff));
