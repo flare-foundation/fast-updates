@@ -122,4 +122,15 @@ contract FastUpdateManager {
             feedDeltas[i] = numericDeltas[feeds[i]];
         }
     }
+
+    function finalizeBlock() public { // only governance
+        expectedSampleSize8x8 -= getSampleIncrease(0);
+        for (uint feed = 0; feed < activeDeltaIncreases.length; ++feed) {
+            activeDeltaIncreases[0][feed] -= getDeltaIncrease(0, feed);
+        }
+    }
+
+    function finalizeRewardEpoch(uint[] calldata seeds) public { // only governance
+        baseSeed = uint(sha256(abi.encodePacked(seeds)));
+    }
 }
