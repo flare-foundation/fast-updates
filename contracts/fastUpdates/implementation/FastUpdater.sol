@@ -35,9 +35,9 @@ contract FastUpdater {
 
     // Called by Flare daemon at the end of each block
     function finalizeBlock(bool newSeed) public {
-        uint8 numParticipants = fastUpdaters.numParticipants();
-        uint cutoff = fastUpdateManager.getScoreCutoff(numParticipants);
-        uint seed = newSeed ? fastUpdateManager.baseSeed() : getSortitionRound(0).seed + 1;
+        uint numProviders = fastUpdaters.numProviders();
+        uint cutoff = fastUpdateManager.getScoreCutoff(numProviders);
+        uint seed = newSeed ? fastUpdaters.baseSeed() : getSortitionRound(0).seed + 1;
         setCurrentSortitionRound(SortitionRound(seed, cutoff));
     }
 
@@ -56,10 +56,10 @@ contract FastUpdater {
     ) public {
         uint blocksAgo = block.number - sortitionBlock;
         SortitionRound storage sortitionRound = getSortitionRound(blocksAgo);
-        ECPoint memory publicKey = fastUpdaters.sortitionPublicKey(msg.sender);
-        ECPoint2 memory basePoint = fastUpdateManager.getECBasePoint();
+        (ECPoint memory publicKey, uint sortitionWeight) = fastUpdaters.activeProviders(msg.sender);
+        ECPoint2 memory basePoint = fastUpdaters.getECBasePoint();
 
-        verifySortitionCredential(sortitionRound, publicKey, basePoint, sortitionCredential);
+        verifySortitionCredential(sortitionRound, publicKey, sortitionWeight, basePoint, sortitionCredential);
         applyUpdates(deltas);
     }
 

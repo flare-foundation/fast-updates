@@ -2,6 +2,7 @@
 pragma solidity 0.8.18;
 
 import { ECPoint2 } from "../lib/Sortition.sol";
+import { VIRTUAL_PROVIDER_BITS } from "./FastUpdaters.sol";
 
 contract FastUpdateManager {
     uint public submissionWindowLength;
@@ -11,8 +12,6 @@ contract FastUpdateManager {
     }
 
     uint32[1000] public numericDeltas;
-    ECPoint2 private ecBasePoint;
-    uint public baseSeed;
 
     uint16[] private activeSampleIncreases;
     function ixS(uint i) private view returns (uint) {
@@ -55,10 +54,6 @@ contract FastUpdateManager {
     uint16 private expectedSampleSize8x8;
     uint16 private constant bitmask8x8low = uint8(int8(-1));
 
-    function setBaseSeed(uint newSeed) public { // onlyGovernance
-        baseSeed = newSeed;
-    }
-
     function setExpectedSampleSize(uint16 newSize8x8) public { // onlyGovernance
         expectedSampleSize8x8 = newSize8x8;
         setSampleIncreaseDuration(activeSampleIncreases.length); // clears the array
@@ -90,28 +85,12 @@ contract FastUpdateManager {
         scaleNumericDelta(scaleFactor8x8, feed);
     }
 
-    function getScoreCutoff(uint8 numParticipants) public view returns (uint) { // onlyGovernance
-        // The formula is: (exp. s.size)/(num. part.) = (score)/(score range), score range = 2**256
-        // So, return (expectedSampleSize << 256)/numParticipants, 
-        // being careful about multiplication overflow and integer division:
-        //
-        // e<<256 / n = (eH<<256 + eL<<248) / n = (eL<<248 + eH * (2**256 % n))/ n + eH * (2**256//n)
-        // 2**256 % n = (uint.max % n + 1) % n
-        // 2**256//n  = uint.max//n + (uint.max % n == -1)
-
-        uint eH = expectedSampleSize8x8 >> 8;
-        uint eL = expectedSampleSize8x8 & bitmask8x8low;
-
-        uint u = type(uint).max % numParticipants;
-        uint x = (u + 1) % numParticipants;
-        uint y = type(uint).max / numParticipants + (u == numParticipants - 1 ? 1 : 0);
-
-        return (eL << 248 + eH * x) / numParticipants + eH * y;
-    }
-
-    // This is because Solidity's autogen'd getters intentionally screw up returned structs
-    function getECBasePoint() public view returns (ECPoint2 memory) {
-        return ecBasePoint;
+    function getScoreCutoff() public view returns (uint) { // onlyGovernance
+        // The formula is: (exp. s.size)/(num. prov.) = (score)/(score range)
+        //   score range = 2**256
+        //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
+        //   exp. s.size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
+        return uint(expectedSampleSize8x8) << (256 - VIRTUAL_PROVIDER_BITS - 8);
     }
 
     function getNumericDeltas(
@@ -128,9 +107,5 @@ contract FastUpdateManager {
         for (uint feed = 0; feed < activeDeltaIncreases.length; ++feed) {
             activeDeltaIncreases[0][feed] -= getDeltaIncrease(0, feed);
         }
-    }
-
-    function finalizeRewardEpoch(uint[] calldata seeds) public { // only governance
-        baseSeed = uint(sha256(abi.encodePacked(seeds)));
     }
 }
