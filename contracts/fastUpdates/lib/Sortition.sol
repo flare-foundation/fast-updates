@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
+import "hardhat/console.sol";
 import "./Bn256.sol";
 
 // Encoding of EC point when space is premium
@@ -93,24 +94,46 @@ function g1SignedPointToG1Point(ECPoint memory ecPt) view returns (Bn256.G1Point
     }
 }
 
-function verifySortitionCredential2(
-    SortitionRound storage sortitionRound,
-    Bn256.G1Point memory pubKey,
-    SortitionCredential calldata sortitionCredential
-) view returns (bool ok) {
-    Bn256.G1Point memory u = Bn256.g1Add(
-        Bn256.scalarMultiply(pubKey, sortitionCredential.c),
-        Bn256.scalarMultiply(Bn256.g1(), sortitionCredential.s)
-    );
+struct SortitionCredential2 {
+    uint256 replicate;
+    Bn256.G1Point gamma;
+    uint256 c;
+    uint256 s;
+}
 
-    Bn256.G1Point memory h = Bn256.g1HashToPoint(abi.encodePacked(sortitionRound.seed, sortitionCredential.replicate));
+contract SortitionContract {
+    function VerifySortitionCredential(
+        SortitionRound memory sortitionRound,
+        Bn256.G1Point memory pubKey,
+        SortitionCredential2 memory sortitionCredential
+    ) public view returns (bool) {
+        bool check = VerifySortitionProof(sortitionRound, pubKey, sortitionCredential);
+        uint256 vrfVal = sortitionCredential.gamma.x;
 
-    Bn256.G1Point memory gamma = g1SignedPointToG1Point(sortitionCredential.gamma); // todo
-    Bn256.G1Point memory v = Bn256.g1Add(
-        Bn256.scalarMultiply(gamma, sortitionCredential.c),
-        Bn256.scalarMultiply(h, sortitionCredential.s)
-    );
-    uint256 vrfVal = gamma.x;
-    uint c2 = uint(sha256(abi.encode(Bn256.g1(), h, pubKey, gamma, u, v))); // todo
-    return c2 == sortitionCredential.c && vrfVal <= sortitionRound.scoreCutoff;
+        return check && vrfVal <= sortitionRound.scoreCutoff;
+    }
+
+    function VerifySortitionProof(
+        SortitionRound memory sortitionRound,
+        Bn256.G1Point memory pubKey,
+        SortitionCredential2 memory sortitionCredential
+    ) public view returns (bool) {
+        Bn256.G1Point memory u = Bn256.g1Add(
+            Bn256.scalarMultiply(pubKey, sortitionCredential.c),
+            Bn256.scalarMultiply(Bn256.g1(), sortitionCredential.s)
+        );
+
+        Bn256.G1Point memory h = Bn256.g1HashToPoint(
+            abi.encodePacked(sortitionRound.seed, sortitionCredential.replicate)
+        );
+
+        Bn256.G1Point memory v = Bn256.g1Add(
+            Bn256.scalarMultiply(sortitionCredential.gamma, sortitionCredential.c),
+            Bn256.scalarMultiply(h, sortitionCredential.s)
+        );
+        uint256 c2 = uint256(sha256(abi.encode(Bn256.g1(), h, pubKey, sortitionCredential.gamma, u, v)));
+        c2 = c2 % Bn256.getQ();
+
+        return c2 == sortitionCredential.c;
+    }
 }
