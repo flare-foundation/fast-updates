@@ -84,7 +84,7 @@ function verifySortitionCredential(
     ECPoint2 memory v = ecAdd(ecMul(gamma, sortitionCredential.c), ecMul(h, sortitionCredential.s));
     uint vrfVal = gamma.x;
     uint c2 = uint(sha256(abi.encode(basePoint, h, pubKey, gamma, u, v)));
-    return gammaOK && c2 == sortitionCredential.c && vrfVal <= sortitionRound.scoreCutoff;
+    return (gammaOK && c2 == sortitionCredential.c && vrfVal <= sortitionRound.scoreCutoff, vrfVal);
 }
 
 function g1SignedPointToG1Point(ECPoint memory ecPt) view returns (Bn256.G1Point memory pt) {
