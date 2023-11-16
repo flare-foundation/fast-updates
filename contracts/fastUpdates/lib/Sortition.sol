@@ -70,11 +70,12 @@ struct SortitionCredential {
 }
 
 function verifySortitionCredential(
-    SortitionRound storage sortitionRound,
+    SortitionRound memory sortitionRound,
     ECPoint memory publicKey,
+    uint weight,
     ECPoint2 memory basePoint,
     SortitionCredential calldata sortitionCredential
-) view returns (bool ok) {
+) view returns (bool ok, uint score) {
     (, ECPoint2 memory pubKey) = ecPointToECPoint2(publicKey); // Assumed to be valid
     ECPoint2 memory u = ecAdd(ecMul(pubKey, sortitionCredential.c), ecMul(basePoint, sortitionCredential.s));
     uint input = uint(sha256(abi.encodePacked(sortitionRound.seed, sortitionCredential.replicate)));
