@@ -107,14 +107,14 @@ contract SortitionContract {
         Bn256.G1Point memory pubKey,
         SortitionCredential2 memory sortitionCredential
     ) public view returns (bool) {
-        bool check = VerifySortitionProof(sortitionRound, pubKey, sortitionCredential);
+        bool check = VerifySortitionProof(sortitionRound.seed, pubKey, sortitionCredential);
         uint256 vrfVal = sortitionCredential.gamma.x;
 
         return check && vrfVal <= sortitionRound.scoreCutoff;
     }
 
     function VerifySortitionProof(
-        SortitionRound memory sortitionRound,
+        uint256 seed,
         Bn256.G1Point memory pubKey,
         SortitionCredential2 memory sortitionCredential
     ) public view returns (bool) {
@@ -123,9 +123,7 @@ contract SortitionContract {
             Bn256.scalarMultiply(Bn256.g1(), sortitionCredential.s)
         );
 
-        Bn256.G1Point memory h = Bn256.g1HashToPoint(
-            abi.encodePacked(sortitionRound.seed, sortitionCredential.replicate)
-        );
+        Bn256.G1Point memory h = Bn256.g1HashToPoint(abi.encodePacked(seed, sortitionCredential.replicate));
 
         Bn256.G1Point memory v = Bn256.g1Add(
             Bn256.scalarMultiply(sortitionCredential.gamma, sortitionCredential.c),

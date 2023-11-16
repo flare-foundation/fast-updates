@@ -40,20 +40,20 @@ export function VerifiableRandomness(key: SortitionKey, seed: bigint, replicate:
     toHash = encodePacked(
         { value: toBN(bn254.ProjectivePoint.BASE.x.toString()), type: "uint256" },
         { value: toBN(bn254.ProjectivePoint.BASE.y.toString()), type: "uint256" },
-        { value: toBN(h.toAffine().x.toString()), type: "uint256" },
-        { value: toBN(h.toAffine().y.toString()), type: "uint256" },
-        { value: toBN(key.pk.toAffine().x.toString()), type: "uint256" },
-        { value: toBN(key.pk.toAffine().y.toString()), type: "uint256" },
-        { value: toBN(gamma.toAffine().x.toString()), type: "uint256" },
-        { value: toBN(gamma.toAffine().y.toString()), type: "uint256" },
-        { value: toBN(gToK.toAffine().x.toString()), type: "uint256" },
-        { value: toBN(gToK.toAffine().y.toString()), type: "uint256" },
-        { value: toBN(hToK.toAffine().x.toString()), type: "uint256" },
-        { value: toBN(hToK.toAffine().y.toString()), type: "uint256" }
+        { value: toBN(h.x.toString()), type: "uint256" },
+        { value: toBN(h.y.toString()), type: "uint256" },
+        { value: toBN(key.pk.x.toString()), type: "uint256" },
+        { value: toBN(key.pk.y.toString()), type: "uint256" },
+        { value: toBN(gamma.x.toString()), type: "uint256" },
+        { value: toBN(gamma.y.toString()), type: "uint256" },
+        { value: toBN(gToK.x.toString()), type: "uint256" },
+        { value: toBN(gToK.y.toString()), type: "uint256" },
+        { value: toBN(hToK.x.toString()), type: "uint256" },
+        { value: toBN(hToK.y.toString()), type: "uint256" }
     );
 
     const c = BigInt(sha256(toHash)) % bn254.CURVE.n;
-    const s = (((k - c * key.sk) % bn254.CURVE.n) + bn254.CURVE.n) % bn254.CURVE.n;
+    const s = (((k - c * key.sk) % bn254.CURVE.n) + bn254.CURVE.n) % bn254.CURVE.n; // modulo twice to avoid negative
     const proof: Proof = { gamma: gamma, c: c, s: s };
 
     return proof;
@@ -77,7 +77,7 @@ function g1YFromX(x: bigint) {
 function g1HashToPoint(m: string): ProjPointType<bigint> {
     const h = BigInt(sha256(m));
     let x = h % bn254.CURVE.p;
-    while (true) {
+    for (;;) {
         const point = g1YFromX(x);
         if (point != null) {
             return point;
