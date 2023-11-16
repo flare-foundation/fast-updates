@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { FastUpdaters } from "./FastUpdaters.sol";
-import { FastUpdateManager } from "./FastUpdateManager.sol";
-import { Deltas } from "../lib/Deltas.sol";
-import { ECPoint, ECPoint2, SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
+import {FastUpdaters} from "./FastUpdaters.sol";
+import {FastUpdateManager} from "./FastUpdateManager.sol";
+import {Deltas} from "../lib/Deltas.sol";
+import {SortitionRound, SortitionCredential, VerifySortitionCredential} from "../lib/Sortition.sol";
+import "../lib/Bn256.sol";
 
 contract FastUpdater {
     FastUpdaters private fastUpdaters;
@@ -15,17 +16,22 @@ contract FastUpdater {
 
     // A circular buffer
     SortitionRound[] private activeSortitionRounds;
+
     function ix(uint i) private view returns (uint) {
         return (i + block.number) % activeSortitionRounds.length;
     }
+
     function getSortitionRound(uint i) private view returns (SortitionRound storage) {
         assert(i < activeSortitionRounds.length);
         return activeSortitionRounds[ix(i)];
     }
+
     function setCurrentSortitionRound(SortitionRound memory x) private {
         activeSortitionRounds[ix(0)] = x;
     }
-    function setSubmissionWindow(uint w) private { // only governance
+
+    function setSubmissionWindow(uint w) private {
+        // only governance
         delete activeSortitionRounds;
         for (uint i = 0; i < w; ++i) {
             activeSortitionRounds.push();
@@ -44,11 +50,13 @@ contract FastUpdater {
         setCurrentSortitionRound(SortitionRound(seed, cutoff));
     }
 
-    function setFastUpdaters(FastUpdaters addr) public { // onlyGovernance
+    function setFastUpdaters(FastUpdaters addr) public {
+        // onlyGovernance
         fastUpdaters = addr;
     }
 
-    function setFastUpdateManager(FastUpdateManager addr) public { // onlyGovernance
+    function setFastUpdateManager(FastUpdateManager addr) public {
+        // onlyGovernance
         fastUpdateManager = addr;
     }
 
@@ -59,16 +67,13 @@ contract FastUpdater {
     ) public {
         uint blocksAgo = block.number - sortitionBlock;
         SortitionRound storage sortitionRound = getSortitionRound(blocksAgo);
-        (ECPoint memory publicKey, uint sortitionWeight) = fastUpdaters.activeProviders(msg.sender);
-        ECPoint2 memory basePoint = fastUpdaters.getECBasePoint();
+        (Bn256.G1Point memory publicKey, uint sortitionWeight) = fastUpdaters.activeProviders(msg.sender);
 
-        verifySortitionCredential(sortitionRound, publicKey, sortitionWeight, basePoint, sortitionCredential);
+        VerifySortitionCredential(sortitionRound, publicKey, sortitionWeight, sortitionCredential);
         applyUpdates(deltas);
     }
 
-    function fetchCurrentPrices(
-        uint[] calldata feeds
-    ) public view returns(uint[] memory prices) {
+    function fetchCurrentPrices(uint[] calldata feeds) public view returns (uint[] memory prices) {
         uint[] memory feedDeltas = fastUpdateManager.getNumericDeltas(feeds);
         prices = new uint[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
@@ -76,10 +81,7 @@ contract FastUpdater {
         }
     }
 
-    function currentPrice(
-        uint feedDelta,
-        uint feed
-    ) private view returns (uint) {
+    function currentPrice(uint feedDelta, uint feed) private view returns (uint) {
         // assumption: currentPrice() >= 0
         return uint(currentPrice(anchorPrices[feed], feedDelta, totalUnitDeltas[feed]));
     }
@@ -88,22 +90,17 @@ contract FastUpdater {
         uint anchorPrice,
         uint feedDelta, // assumption: int(feedDelta) >= 0
         int totalUnitDelta
-    ) private pure returns(int) {
+    ) private pure returns (int) {
         int ap = int(uint(anchorPrice));
         int pd = int(feedDelta) * totalUnitDelta;
         return ap + pd;
     }
 
-    function applyUpdates(
-        Deltas calldata deltas
-    ) private {
+    function applyUpdates(Deltas calldata deltas) private {
         deltas.forEach(applyDelta); // TODO: optimize these calls for storage access
     }
 
-    function applyDelta(
-        int delta,
-        uint feed
-    ) private  {
+    function applyDelta(int delta, uint feed) private {
         int newTotalUnitDelta = totalUnitDeltas[feed] + delta;
         if (newTotalUnitDelta < type(int8).min || newTotalUnitDelta > type(int8).max) {
             uint[] memory feed1 = new uint[](1);
@@ -113,8 +110,7 @@ contract FastUpdater {
             int newAnchorPrice = currentPrice(anchorPrices[feed], feedDeltas[0], newTotalUnitDelta);
             anchorPrices[feed] = newAnchorPrice < 0 ? 0 : uint32(uint(newAnchorPrice));
             totalUnitDeltas[feed] = 0;
-        }
-        else {
+        } else {
             totalUnitDeltas[feed] = int8(newTotalUnitDelta);
         }
     }

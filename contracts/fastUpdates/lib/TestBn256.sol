@@ -5,7 +5,7 @@ pragma solidity 0.8.18;
 /* solium-disable-next-line */
 pragma experimental ABIEncoderV2;
 
-import "./Bn256.sol";
+import "../lib/Bn256.sol";
 
 contract TestBn256 {
     function publicG1Unmarshal(bytes memory m) public pure returns (Bn256.G1Point memory) {

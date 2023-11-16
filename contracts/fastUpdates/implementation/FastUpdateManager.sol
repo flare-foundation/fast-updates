@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { ECPoint2 } from "../lib/Sortition.sol";
 import { VIRTUAL_PROVIDER_BITS } from "./FastUpdaters.sol";
 
 contract FastUpdateManager {

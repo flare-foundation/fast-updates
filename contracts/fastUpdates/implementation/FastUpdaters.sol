@@ -1,64 +1,67 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { ECPoint, ECPoint2, SortitionCredential, SortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
-import { IVoterRegistry } from "./IVoterRegistry.sol";
+import {SortitionCredential, SortitionRound, VerifySortitionCredential} from "../lib/Sortition.sol";
+import {IVoterRegistry} from "./IVoterRegistry.sol";
+import "../lib/Bn256.sol";
 
 contract FastUpdaters {
     struct ActiveProviderData {
-        ECPoint publicKey;
+        Bn256.G1Point publicKey;
         uint sortitionWeight;
     }
 
     struct StagedProviderData {
         bool present;
-        ECPoint publicKey;
+        Bn256.G1Point publicKey;
         uint seedScore;
     }
 
-    mapping (address => ActiveProviderData) public activeProviders;
+    mapping(address => ActiveProviderData) public activeProviders;
     address[] activeProviderAddresses; // Must have uint8 length
 
     function numProviders() public view returns (uint) {
         return activeProviderAddresses.length;
     }
 
-    mapping (address => StagedProviderData) stagedProviders;
+    mapping(address => StagedProviderData) stagedProviders;
     address[] stagedProviderAddresses;
 
-    ECPoint2 private ecBasePoint;
+    Bn256.G1Point private ecBasePoint;
     uint public baseSeed;
 
     IVoterRegistry voterRegistry;
 
-    function setVoterRegistry (IVoterRegistry registry) public { // only governance
+    function setVoterRegistry(IVoterRegistry registry) public {
+        // only governance
         voterRegistry = registry;
     }
 
     // This is because Solidity's autogen'd getters intentionally screw up returned structs
-    function getECBasePoint() public view returns (ECPoint2 memory) {
+    function getECBasePoint() public view returns (Bn256.G1Point memory) {
         return ecBasePoint;
     }
 
-    function sortitionPublicKey(address provider) public view returns (ECPoint memory) {
+    function sortitionPublicKey(address provider) public view returns (Bn256.G1Point memory) {
         return activeProviders[provider].publicKey;
     }
 
     function stagedProviderData(
-        ECPoint calldata publicKey, 
+        Bn256.G1Point calldata publicKey,
         uint score
-    ) private pure returns(StagedProviderData memory) {
+    ) private pure returns (StagedProviderData memory) {
         return StagedProviderData(true, publicKey, score);
     }
 
-    function registerNewProvider(ECPoint calldata publicKey, SortitionCredential calldata credential) public {
+    function registerNewProvider(Bn256.G1Point calldata publicKey, SortitionCredential calldata credential) public {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = verifySortitionCredential(round, publicKey, 0, ecBasePoint, credential);
+        (, uint score) = VerifySortitionCredential(round, publicKey, 0, credential);
         stagedProviders[msg.sender] = stagedProviderData(publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }
 
-    function finalizeRewardEpoch(uint epochId) public { // only governance
+    function finalizeRewardEpoch(uint epochId) public {
+        // only governance
         // Clear active providers
         for (uint i = 0; i < activeProviderAddresses.length; ++i) {
             address provider = activeProviderAddresses[i];

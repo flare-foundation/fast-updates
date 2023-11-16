@@ -1,13 +1,13 @@
-import { SortitionContractInstance } from "../../typechain-truffle";
+import { TestSortitionContractInstance } from "../../typechain-truffle";
 import { getTestFile } from "../../test-utils/utils/constants";
 import { RandInt } from "../../src/utils/rand";
 import { KeyGen, VerifiableRandomness, SortitionKey, Proof } from "../../src/Sortition";
 import { bn254 } from "@noble/curves/bn254";
 
-const SortitionContract = artifacts.require("SortitionContract");
+const SortitionContract = artifacts.require("TestSortitionContract");
 
 contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
-    let sortition: SortitionContractInstance;
+    let sortition: TestSortitionContractInstance;
     before(async () => {
         const governance = accounts[0];
         sortition = await SortitionContract.new(governance);
@@ -21,7 +21,7 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
         const pubKey = [key.pk.x, key.pk.y];
         const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
-        const check = await sortition.VerifySortitionProof(seed, pubKey, sortitionCredential);
+        const check = await sortition.TestVerifySortitionProof(seed, pubKey, sortitionCredential);
 
         expect(check).to.equal(true);
     });
@@ -36,7 +36,7 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
             const sortitionRound = [seed, scoreCutoff];
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
-            const check = await sortition.VerifySortitionCredential(sortitionRound, pubKey, sortitionCredential);
+            const check = await sortition.TestVerifySortitionCredential(sortitionRound, pubKey, sortitionCredential);
 
             if (proof.gamma.x > scoreCutoff) {
                 expect(check).to.equal(false);
