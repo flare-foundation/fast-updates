@@ -30,23 +30,25 @@ struct SortitionCredential {
     uint256 s;
 }
 
-function VerifySortitionCredential(
+function verifySortitionCredential(
     SortitionRound memory sortitionRound,
     Bn256.G1Point memory pubKey,
-    uint weight,
+    uint weight, // todo
     SortitionCredential memory sortitionCredential
 ) view returns (bool, uint256) {
-    bool check = VerifySortitionProof(sortitionRound.seed, pubKey, sortitionCredential);
+    bool check = verifySortitionProof(sortitionRound.seed, pubKey, sortitionCredential);
     uint256 vrfVal = sortitionCredential.gamma.x;
 
     return (check && vrfVal <= sortitionRound.scoreCutoff, vrfVal);
 }
 
-function VerifySortitionProof(
+function verifySortitionProof(
     uint256 seed,
     Bn256.G1Point memory pubKey,
     SortitionCredential memory sortitionCredential
 ) view returns (bool) {
+    require(Bn256.isG1PointOnCurve(pubKey)); // this also checks that it is not zero
+    require(Bn256.isG1PointOnCurve(sortitionCredential.gamma));
     Bn256.G1Point memory u = Bn256.g1Add(
         Bn256.scalarMultiply(pubKey, sortitionCredential.c),
         Bn256.scalarMultiply(Bn256.g1(), sortitionCredential.s)

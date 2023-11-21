@@ -3,25 +3,25 @@ pragma solidity 0.8.18;
 
 import "hardhat/console.sol";
 import "./Bn256.sol";
-import {SortitionRound, SortitionCredential, VerifySortitionCredential, VerifySortitionProof} from "./Sortition.sol";
+import {SortitionRound, SortitionCredential, verifySortitionCredential, verifySortitionProof} from "./Sortition.sol";
 
 contract TestSortitionContract {
-    function TestVerifySortitionCredential(
-        SortitionRound memory sortitionRound,
-        Bn256.G1Point memory pubKey,
-        SortitionCredential memory sortitionCredential
+    function testVerifySortitionCredential(
+        SortitionRound calldata sortitionRound,
+        Bn256.G1Point calldata pubKey,
+        SortitionCredential calldata sortitionCredential
     ) public view returns (bool) {
         bool check;
         uint256 score;
-        (check, score) = VerifySortitionCredential(sortitionRound, pubKey, 0, sortitionCredential);
+        (check, score) = verifySortitionCredential(sortitionRound, pubKey, 0, sortitionCredential);
         return check;
     }
 
-    function TestVerifySortitionProof(
+    function testVerifySortitionProof(
         uint256 seed,
-        Bn256.G1Point memory pubKey,
-        SortitionCredential memory sortitionCredential
+        Bn256.G1Point calldata pubKey,
+        SortitionCredential calldata sortitionCredential
     ) public view returns (bool) {
-        return VerifySortitionProof(seed, pubKey, sortitionCredential);
+        return verifySortitionProof(seed, pubKey, sortitionCredential);
     }
 }

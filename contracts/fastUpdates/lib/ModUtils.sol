@@ -33,7 +33,7 @@ library ModUtils {
      * root exists. The modulus p must be an odd prime. If a square root does
      * not exist, function returns 0.
      */
-    function modSqrt(uint256 a, uint256 p) internal view returns (uint256) {
+    function modSqrt(uint256 a, uint256 p) internal view returns (uint256 o) {
         if (legendre(a, p) != 1) {
             return 0;
         }
@@ -106,6 +106,6 @@ library ModUtils {
             return -1;
         }
 
-        require(false, "Failed to calculate legendre.");
+        revert("Failed to calculate legendre.");
     }
 }

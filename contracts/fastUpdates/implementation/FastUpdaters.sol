@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import {SortitionCredential, SortitionRound, VerifySortitionCredential} from "../lib/Sortition.sol";
+import {SortitionCredential, SortitionRound, verifySortitionCredential} from "../lib/Sortition.sol";
 import {IVoterRegistry} from "./IVoterRegistry.sol";
 import "../lib/Bn256.sol";
 
@@ -55,7 +55,7 @@ contract FastUpdaters {
 
     function registerNewProvider(Bn256.G1Point calldata publicKey, SortitionCredential calldata credential) public {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = VerifySortitionCredential(round, publicKey, 0, credential);
+        (, uint score) = verifySortitionCredential(round, publicKey, 0, credential);
         stagedProviders[msg.sender] = stagedProviderData(publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }

@@ -59,7 +59,7 @@ library Bn256 {
      * lower gas cost on the EVM, rather than good distribution of points on
      * G1.
      */
-    function g1HashToPoint(bytes memory m) internal view returns (G1Point memory) {
+    function g1HashToPoint(bytes memory m) internal view returns (G1Point memory o) {
         bytes32 h = sha256(m);
         uint256 x = uint256(h) % p;
         uint256 y;
@@ -67,7 +67,8 @@ library Bn256 {
         while (true) {
             y = g1YFromX(x);
             if (y > 0) {
-                return G1Point(x, y);
+                o = G1Point(x, y);
+                return o;
             }
             x += 1;
         }

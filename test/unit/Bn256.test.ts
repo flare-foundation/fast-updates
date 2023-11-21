@@ -22,7 +22,7 @@ contract(`Bn256.sol; ${getTestFile(__filename)}`, async accounts => {
         const a = bn254.ProjectivePoint.BASE.multiply(r1);
         const b = bn254.ProjectivePoint.BASE.multiply(r2);
 
-        const c = await altBn128.PublicG1Add([a.x, a.y], [b.x, b.y]);
+        const c = await altBn128.publicG1Add([a.x, a.y], [b.x, b.y]);
 
         const cCheck = a.add(b);
         expect(c[0].toString()).to.equal(cCheck.x.toString());
@@ -34,7 +34,7 @@ contract(`Bn256.sol; ${getTestFile(__filename)}`, async accounts => {
         const r2 = RandInt(bn254.CURVE.n);
         const a = bn254.ProjectivePoint.BASE.multiply(r1);
 
-        const c = await altBn128.PublicG1ScalarMultiply([a.x, a.y], r2);
+        const c = await altBn128.publicG1ScalarMultiply([a.x, a.y], r2);
 
         const cCheck = a.multiply(r2);
         expect(c[0].toString()).to.equal(cCheck.x.toString());

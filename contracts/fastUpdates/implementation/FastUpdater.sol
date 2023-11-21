@@ -4,7 +4,7 @@ pragma solidity 0.8.18;
 import {FastUpdaters} from "./FastUpdaters.sol";
 import {FastUpdateManager} from "./FastUpdateManager.sol";
 import {Deltas} from "../lib/Deltas.sol";
-import {SortitionRound, SortitionCredential, VerifySortitionCredential} from "../lib/Sortition.sol";
+import {SortitionRound, SortitionCredential, verifySortitionCredential} from "../lib/Sortition.sol";
 import "../lib/Bn256.sol";
 
 contract FastUpdater {
@@ -69,7 +69,7 @@ contract FastUpdater {
         SortitionRound storage sortitionRound = getSortitionRound(blocksAgo);
         (Bn256.G1Point memory publicKey, uint sortitionWeight) = fastUpdaters.activeProviders(msg.sender);
 
-        VerifySortitionCredential(sortitionRound, publicKey, sortitionWeight, sortitionCredential);
+        verifySortitionCredential(sortitionRound, publicKey, sortitionWeight, sortitionCredential);
         applyUpdates(deltas);
     }
 

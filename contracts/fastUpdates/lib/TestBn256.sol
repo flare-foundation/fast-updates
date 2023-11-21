@@ -14,7 +14,7 @@ contract TestBn256 {
 
     Bn256.G1Point g1 = Bn256.g1();
 
-    function runHashingTest() public {
+    function runHashingTest() public view {
         string memory hello = "hello!";
         string memory goodbye = "goodbye.";
         Bn256.G1Point memory p_1;
@@ -31,7 +31,7 @@ contract TestBn256 {
         require(Bn256.isG1PointOnCurve(p_2), "Hashed points should be on the curve.");
     }
 
-    function runHashAndAddTest() public {
+    function runHashAndAddTest() public view {
         string memory hello = "hello!";
         string memory goodbye = "goodbye.";
         Bn256.G1Point memory p_1;
@@ -51,7 +51,7 @@ contract TestBn256 {
         require(Bn256.isG1PointOnCurve(p_3), "Added points should be on the curve.");
     }
 
-    function runHashAndScalarMultiplyTest() public {
+    function runHashAndScalarMultiplyTest() public view {
         string memory hello = "hello!";
         Bn256.G1Point memory p_1;
         Bn256.G1Point memory p_2;
@@ -62,11 +62,11 @@ contract TestBn256 {
         require(Bn256.isG1PointOnCurve(p_2), "Multiplied point should be on the curve.");
     }
 
-    function PublicG1Add(Bn256.G1Point memory a, Bn256.G1Point memory b) public view returns (Bn256.G1Point memory c) {
+    function publicG1Add(Bn256.G1Point memory a, Bn256.G1Point memory b) public view returns (Bn256.G1Point memory c) {
         c = Bn256.g1Add(a, b);
     }
 
-    function PublicG1ScalarMultiply(Bn256.G1Point memory a, uint256 s) public view returns (Bn256.G1Point memory c) {
+    function publicG1ScalarMultiply(Bn256.G1Point memory a, uint256 s) public view returns (Bn256.G1Point memory c) {
         c = Bn256.scalarMultiply(a, s);
     }
 }

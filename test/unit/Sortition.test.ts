@@ -21,7 +21,7 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
         const pubKey = [key.pk.x, key.pk.y];
         const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
-        const check = await sortition.TestVerifySortitionProof(seed, pubKey, sortitionCredential);
+        const check = await sortition.testVerifySortitionProof(seed, pubKey, sortitionCredential);
 
         expect(check).to.equal(true);
     });
@@ -36,7 +36,7 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
             const sortitionRound = [seed, scoreCutoff];
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
-            const check = await sortition.TestVerifySortitionCredential(sortitionRound, pubKey, sortitionCredential);
+            const check = await sortition.testVerifySortitionCredential(sortitionRound, pubKey, sortitionCredential);
 
             if (proof.gamma.x > scoreCutoff) {
                 expect(check).to.equal(false);
