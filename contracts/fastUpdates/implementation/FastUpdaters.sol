@@ -27,7 +27,6 @@ contract FastUpdaters {
     mapping(address => StagedProviderData) stagedProviders;
     address[] stagedProviderAddresses;
 
-    Bn256.G1Point private ecBasePoint;
     uint public baseSeed;
 
     IVoterRegistry voterRegistry;
@@ -35,11 +34,6 @@ contract FastUpdaters {
     function setVoterRegistry(IVoterRegistry registry) public {
         // only governance
         voterRegistry = registry;
-    }
-
-    // This is because Solidity's autogen'd getters intentionally screw up returned structs
-    function getECBasePoint() public view returns (Bn256.G1Point memory) {
-        return ecBasePoint;
     }
 
     function sortitionPublicKey(address provider) public view returns (Bn256.G1Point memory) {

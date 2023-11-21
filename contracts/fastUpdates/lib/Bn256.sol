@@ -76,7 +76,7 @@ library Bn256 {
 
     /**
      * @dev Calculates whether the provided number is even or odd.
-     * @return 0x01 if y is an even number and 0x00 if it's odd.
+     * @return 0x01 if y is an odd number and 0x00 if it's even.
      */
     function parity(uint256 value) private pure returns (bytes1) {
         return bytes32(value)[31] & 0x01;

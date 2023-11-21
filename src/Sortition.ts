@@ -29,11 +29,10 @@ export function VerifiableRandomness(key: SortitionKey, seed: bigint, replicate:
     let toHash: string = encodePacked(
         { value: toBN(seed.toString()), type: "uint256" },
         { value: toBN(replicate.toString()), type: "uint256" }
-    );
+    )!;
 
     const h = g1HashToPoint(toHash);
     const gamma = h.multiply(key.sk);
-
     const k = RandInt(bn254.CURVE.n);
     const gToK = bn254.ProjectivePoint.BASE.multiply(k);
     const hToK = h.multiply(k);
@@ -50,7 +49,7 @@ export function VerifiableRandomness(key: SortitionKey, seed: bigint, replicate:
         { value: toBN(gToK.y.toString()), type: "uint256" },
         { value: toBN(hToK.x.toString()), type: "uint256" },
         { value: toBN(hToK.y.toString()), type: "uint256" }
-    );
+    )!;
 
     const c = BigInt(sha256(toHash)) % bn254.CURVE.n;
     const s = (((k - c * key.sk) % bn254.CURVE.n) + bn254.CURVE.n) % bn254.CURVE.n; // modulo twice to avoid negative
@@ -84,4 +83,19 @@ function g1HashToPoint(m: string): ProjPointType<bigint> {
         }
         x += BigInt(1);
     }
+}
+
+function bytes2hex(buffer: Uint8Array) {
+    return "0x" + [...buffer].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+export function g1compress(a: ProjPointType<bigint>): string {
+    const fp = Field(bn254.CURVE.p);
+    const m = fp.toBytes(a.x);
+
+    if (a.hasEvenY() == false) {
+        m[0] = m[0] | (1 << 7);
+    }
+
+    return bytes2hex(m);
 }
