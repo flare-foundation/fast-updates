@@ -70,13 +70,13 @@ function verifySortitionCredential(
     SortitionRound memory sortitionRound,
     ECPoint memory publicKey,
     uint weight,
-    ECPoint2 memory basePoint,
     SortitionCredential calldata sortitionCredential
 ) view returns (bool ok, uint score) {
+    ECPoint2 memory ecBasePoint; // TODO: fill in
     (, ECPoint2 memory pubKey) = ecPointToECPoint2(publicKey); // Assumed to be valid
     ECPoint2 memory u = ecAdd(
         ecMul(pubKey, sortitionCredential.c),
-        ecMul(basePoint, sortitionCredential.s)
+        ecMul(ecBasePoint, sortitionCredential.s)
     );
     assert(sortitionCredential.replicate < weight);
     uint input = uint(sha256(abi.encodePacked(sortitionRound.seed, sortitionCredential.replicate)));
@@ -87,6 +87,6 @@ function verifySortitionCredential(
         ecMul(h, sortitionCredential.s)
     );
     uint vrfVal = gamma.x;
-    uint c2 = uint(sha256(abi.encode(basePoint, h, pubKey, gamma, u, v)));
+    uint c2 = uint(sha256(abi.encode(ecBasePoint, h, pubKey, gamma, u, v)));
     return (gammaOK && c2 == sortitionCredential.c && vrfVal <= sortitionRound.scoreCutoff, vrfVal);
 }
