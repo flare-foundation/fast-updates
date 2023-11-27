@@ -34,14 +34,14 @@ contract FastUpdater {
         uint cutoff = getScoreCutoff(expectedSampleSize8x8);
         uint seed;
         if (newSeed) { // TODO: this needs to be replaced with a real condition
-            for (uint i = 0; i < activeProviderAddresses; ++i) {
+            for (uint i = 0; i < activeProviderAddresses.length; ++i) {
                 delete activeSortitionRounds[i];
             }
             ECPoint[] memory providerKeys;
             uint[] memory providerWeights;
             (seed, activeProviderAddresses, providerKeys, providerWeights) = fastUpdaters.nextProviderData(epochId);
             for (uint i = 0; i < activeProviderAddresses.length; ++i) {
-                activeSortitionRounds[i] = ActiveProviderData(providerKeys[i], providerWeights[i]);
+                activeProviders[activeProviderAddresses[i]] = ActiveProviderData(providerKeys[i], providerWeights[i]);
             }
         }
         else {
@@ -63,13 +63,13 @@ contract FastUpdater {
     ) public {
         uint blocksAgo = block.number - sortitionBlock;
         SortitionRound storage sortitionRound = getPreviousSortitionRound(blocksAgo);
-        (ECPoint memory publicKey, uint sortitionWeight) = activeProviders[msg.sender];
+        ActiveProviderData storage providerData = activeProviders[msg.sender];
 
-        verifySortitionCredential(sortitionRound, publicKey, sortitionWeight, sortitionCredential);
+        verifySortitionCredential(sortitionRound, providerData.publicKey, providerData.sortitionWeight, sortitionCredential);
         applyUpdates(deltas);
     }
 
-    function getScoreCutoff(uint16 expectedSampleSize8x8) private view returns (uint) {
+    function getScoreCutoff(uint16 expectedSampleSize8x8) private pure returns (uint) {
         // The formula is: (exp. s.size)/(num. prov.) = (score)/(score range)
         //   score range = 2**256
         //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
