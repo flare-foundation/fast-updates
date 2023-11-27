@@ -3,11 +3,11 @@ pragma solidity 0.8.18;
 
 import { FastUpdater } from "./FastUpdater.sol";
 import "../lib/CircularList.sol" as CL;
-import { IFastUpdateIncentiveManager } from "../interface/IFastUpdateIncentiveManager.sol";
+import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
 
 using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16, CL.circularResize, CL.clear, CL.sum } for uint16[];
 
-contract FastUpdateIncentiveManager is IFastUpdateIncentiveManager {
+contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     address payable rewardPool;
 
     uint private excessIncentiveValue;
@@ -23,7 +23,7 @@ contract FastUpdateIncentiveManager is IFastUpdateIncentiveManager {
     uint private rangeIncreasePrice;
     uint private sampleIncreaseLimit;
 
-    function nextSortitionParameters() public returns (uint16 newSampleSize, uint16 newPrecision) { // only governance
+    function nextSortitionParameters() public override returns (uint16 newSampleSize, uint16 newPrecision) { // only governance
         newSampleSize = baseSampleSize8x8 + sampleIncreases.sum();
         newPrecision = basePrecision0x16 + precisionIncreases.sum();
         sampleIncreases.circularZero16();

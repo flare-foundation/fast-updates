@@ -5,17 +5,11 @@ import { FastUpdaters, VIRTUAL_PROVIDER_BITS } from "./FastUpdaters.sol";
 import { FastUpdateIncentiveManager } from "./FastUpdateIncentiveManager.sol";
 import { Deltas } from "../lib/Deltas.sol";
 import { ECPoint, ECPoint2, SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
-import { IFastUpdater } from "../interface/IFastUpdater.sol";
+import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
+import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 
-contract FastUpdater is IFastUpdater {
-    FastUpdaters private fastUpdaters;
-    FastUpdateIncentiveManager private fastUpdateIncentiveManager;
-
+contract FastUpdater is IIFastUpdater {
     SortitionRound[] private activeSortitionRounds;
-
-    function setFastUpdaters(FastUpdaters addr) public { // onlyGovernance
-        fastUpdaters = addr;
-    }
 
     function setSortitionParameters() private returns(uint16 expectedSampleSize8x8) {
         uint16 newPrecision1x15;
@@ -31,12 +25,11 @@ contract FastUpdater is IFastUpdater {
             for (uint i = 0; i < activeProviderAddresses.length; ++i) {
                 delete activeSortitionRounds[i];
             }
-            ECPoint[] memory providerKeys;
-            uint[] memory providerWeights;
-            (seed, activeProviderAddresses, providerKeys, providerWeights) = fastUpdaters.nextProviderData(epochId);
-            for (uint i = 0; i < activeProviderAddresses.length; ++i) {
-                activeProviders[activeProviderAddresses[i]] = ActiveProviderData(providerKeys[i], providerWeights[i]);
+            IIFastUpdaters.ProviderRegistry memory registry = fastUpdaters.nextProviderRegistry(epochId);
+            for (uint i = 0; i < registry.providerAddresses.length; ++i) {
+                activeProviders[registry.providerAddresses[i]] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
             }
+            seed = registry.seed;
         }
         else {
             seed = getPreviousSortitionRound(0).seed + 1;
@@ -45,7 +38,8 @@ contract FastUpdater is IFastUpdater {
     }
 
     // Called by Flare daemon at the end of each block
-    function finalizeBlock(bool newSeed) public { // only governance
+    function finalizeBlock() public override { // only governance
+        bool newSeed;
         uint16 expectedSampleSize8x8 = setSortitionParameters();
         setNextSortitionRound(newSeed, expectedSampleSize8x8);
     }
@@ -77,9 +71,9 @@ contract FastUpdater is IFastUpdater {
     function setNextSortitionRound(SortitionRound memory x) private {
         activeSortitionRounds[ix(1)] = x;
     }
-    function setSubmissionWindow(uint w) private { // only governance
+    function setSubmissionWindow(uint w) external override { // only governance
         delete activeSortitionRounds;
-        for (uint i = 0; i < w; ++i) {
+        for (uint i = 0; i < w; ++i) {  
             activeSortitionRounds.push();
         }
     }

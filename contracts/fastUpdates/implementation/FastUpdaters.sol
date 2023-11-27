@@ -4,9 +4,9 @@ pragma solidity 0.8.18;
 import { ECPoint, ECPoint2, SortitionCredential, SortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IVoterRegistry } from "../interface/IVoterRegistry.sol";
 import { heapSort } from "../lib/Sort.sol";
-import { IFastUpdaters } from "../interface/IFastUpdaters.sol";
+import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 
-contract FastUpdaters is IFastUpdaters {
+contract FastUpdaters is IIFastUpdaters {
     struct StagedProviderData {
         bool present;
         ECPoint publicKey;
@@ -16,12 +16,7 @@ contract FastUpdaters is IFastUpdaters {
     mapping (address => StagedProviderData) stagedProviders;
     address[] stagedProviderAddresses;
 
-    uint public baseSeed;
-    IVoterRegistry voterRegistry;
-
-    function setVoterRegistry (IVoterRegistry registry) public { // only governance
-        voterRegistry = registry;
-    }
+    uint baseSeed;
 
     function stagedProviderData(
         ECPoint calldata publicKey, 
@@ -37,12 +32,7 @@ contract FastUpdaters is IFastUpdaters {
         stagedProviderAddresses.push(msg.sender);
     }
 
-    function nextProviderData(uint epochId) public returns (
-        uint seed,
-        address[] memory providerAddresses,
-        ECPoint[] memory providerKeys,
-        uint[] memory providerWeights
-    ) { // only governance
+    function nextProviderRegistry(uint epochId) public override returns (ProviderRegistry memory registry) { // only governance
         uint totalWeight = voterRegistry.totalWeightPerRewardEpoch(epochId);
         (address[] memory voters, uint[] memory weights) = voterRegistry.votersForRewardEpoch(epochId);
 
@@ -63,24 +53,24 @@ contract FastUpdaters is IFastUpdaters {
 
         // Allocate just the right amount of space for the return values
         uint[] memory seedScores = new uint[](numProviders);
-        providerAddresses = new address[](numProviders);
-        providerKeys = new ECPoint[](numProviders);
-        providerWeights = new uint[](numProviders);
+        registry.providerAddresses = new address[](numProviders);
+        registry.providerKeys = new ECPoint[](numProviders);
+        registry.providerWeights = new uint[](numProviders);
 
         // Copy the packed arrays into the return values
         for (uint i = 0; i < numProviders; ++i) {
             address voter = voters[i];
             StagedProviderData storage voterData = stagedProviders[voter];
 
-            providerAddresses[i] = voter;
-            providerWeights[i] = weights[i];
-            providerKeys[i] = voterData.publicKey;
+            registry.providerAddresses[i] = voter;
+            registry.providerWeights[i] = weights[i];
+            registry.providerKeys[i] = voterData.publicKey;
             seedScores[i] = voterData.seedScore;
         }
 
         // Recalculate the base seed
         heapSort(seedScores);
-        seed = baseSeed = uint(sha256(abi.encodePacked(seedScores)));
+        registry.seed = baseSeed = uint(sha256(abi.encodePacked(seedScores)));
 
         // Finally, clear the staged providers for the next reward epoch
         for (uint i = 0; i < stagedProviderAddresses.length; ++i) {
