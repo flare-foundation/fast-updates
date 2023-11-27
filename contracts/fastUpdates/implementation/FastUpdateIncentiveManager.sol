@@ -8,8 +8,6 @@ import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentive
 using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16, CL.circularResize, CL.clear, CL.sum } for uint16[];
 
 contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
-    address payable rewardPool;
-
     uint private excessIncentiveValue;
 
     uint16[] private sampleIncreases;
