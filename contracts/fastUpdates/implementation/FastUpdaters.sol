@@ -2,10 +2,11 @@
 pragma solidity 0.8.18;
 
 import { ECPoint, ECPoint2, SortitionCredential, SortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
-import { IVoterRegistry } from "./IVoterRegistry.sol";
+import { IVoterRegistry } from "../interface/IVoterRegistry.sol";
 import { heapSort } from "../lib/Sort.sol";
+import { IFastUpdaters } from "../interface/IFastUpdaters.sol";
 
-contract FastUpdaters {
+contract FastUpdaters is IFastUpdaters {
     struct StagedProviderData {
         bool present;
         ECPoint publicKey;
@@ -29,10 +30,10 @@ contract FastUpdaters {
         return StagedProviderData(true, publicKey, score);
     }
 
-    function registerNewProvider(ECPoint calldata publicKey, SortitionCredential calldata credential) public {
+    function registerNewProvider(NewProvider calldata newProvider) external override {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = verifySortitionCredential(round, publicKey, 0, credential);
-        stagedProviders[msg.sender] = stagedProviderData(publicKey, score);
+        (, uint score) = verifySortitionCredential(round, newProvider.publicKey, 0, newProvider.credential);
+        stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }
 

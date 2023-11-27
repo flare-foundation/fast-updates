@@ -3,15 +3,13 @@ pragma solidity 0.8.18;
 
 import { FastUpdater } from "./FastUpdater.sol";
 import "../lib/CircularList.sol" as CL;
+import { IFastUpdateIncentiveManager } from "../interface/IFastUpdateIncentiveManager.sol";
 
 using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16, CL.circularResize, CL.clear, CL.sum } for uint16[];
 
-contract FastUpdateIncentiveManager {
+contract FastUpdateIncentiveManager is IFastUpdateIncentiveManager {
     address payable rewardPool;
 
-    uint16 expectedSampleSize8x8;
-    uint16 precision0x16;
-    uint16 range8x8;
     uint private excessIncentiveValue;
 
     uint16[] private sampleIncreases;
@@ -44,7 +42,7 @@ contract FastUpdateIncentiveManager {
         rangeIncreases.circularAdd16(inc8x8);
     }
 
-    function offerIncentive(uint16 variationRangeIncrease0x16, uint16 rangeLimit8x8) public payable {
+    function offerIncentive(IncentiveOffer calldata offer) external payable override {
         // let c = total amount received as incentive
         //     r = one-block relative variation range of numeric delta
         //     p = precision of numeric delta
@@ -60,8 +58,9 @@ contract FastUpdateIncentiveManager {
         // TODO: fixed-point arithmetic
 
         uint contribution = msg.value;
-        if (rangeLimit8x8 < range8x8 + variationRangeIncrease0x16) {
-            uint16 newRangeIncrease = rangeLimit8x8 - range8x8;
+        uint16 variationRangeIncrease0x16 = offer.variationRangeIncrease0x16;
+        if (offer.rangeLimit8x8 < range8x8 + variationRangeIncrease0x16) {
+            uint16 newRangeIncrease = offer.rangeLimit8x8 - range8x8;
             if (newRangeIncrease < 0) newRangeIncrease = 0;
             contribution *= newRangeIncrease / variationRangeIncrease0x16;
             variationRangeIncrease0x16 = newRangeIncrease;
@@ -82,5 +81,6 @@ contract FastUpdateIncentiveManager {
 
         assert(de >= 0);
         payable(msg.sender).transfer(msg.value - contribution);
+        rewardPool.transfer(contribution);
     }
 }

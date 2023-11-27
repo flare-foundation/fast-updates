@@ -5,19 +5,13 @@ import { FastUpdaters, VIRTUAL_PROVIDER_BITS } from "./FastUpdaters.sol";
 import { FastUpdateIncentiveManager } from "./FastUpdateIncentiveManager.sol";
 import { Deltas } from "../lib/Deltas.sol";
 import { ECPoint, ECPoint2, SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
+import { IFastUpdater } from "../interface/IFastUpdater.sol";
 
-contract FastUpdater {
+contract FastUpdater is IFastUpdater {
     FastUpdaters private fastUpdaters;
     FastUpdateIncentiveManager private fastUpdateIncentiveManager;
 
-    struct ActiveProviderData {
-        ECPoint publicKey;
-        uint sortitionWeight;
-    }
-
     SortitionRound[] private activeSortitionRounds;
-    mapping (address => ActiveProviderData) public activeProviders;
-    address[] activeProviderAddresses; // Must have uint8 length
 
     function setFastUpdaters(FastUpdaters addr) public { // onlyGovernance
         fastUpdaters = addr;
@@ -56,17 +50,13 @@ contract FastUpdater {
         setNextSortitionRound(newSeed, expectedSampleSize8x8);
     }
 
-    function submitUpdates(
-        uint64 sortitionBlock,
-        SortitionCredential calldata sortitionCredential,
-        Deltas calldata deltas
-    ) public {
-        uint blocksAgo = block.number - sortitionBlock;
+    function submitUpdates(FastUpdates calldata updates) external override {
+        uint blocksAgo = block.number - updates.sortitionBlock;
         SortitionRound storage sortitionRound = getPreviousSortitionRound(blocksAgo);
         ActiveProviderData storage providerData = activeProviders[msg.sender];
 
-        verifySortitionCredential(sortitionRound, providerData.publicKey, providerData.sortitionWeight, sortitionCredential);
-        applyUpdates(deltas);
+        verifySortitionCredential(sortitionRound, providerData.publicKey, providerData.sortitionWeight, updates.sortitionCredential);
+        applyUpdates(updates.deltas);
     }
 
     function getScoreCutoff(uint16 expectedSampleSize8x8) private pure returns (uint) {
@@ -142,11 +132,11 @@ contract FastUpdater {
     }
 
     function fetchCurrentPrices(
-        uint32[] calldata feeds
-    ) public view returns(uint[] memory prices) {
+        uint[] calldata feeds
+    ) external view override returns(uint[] memory prices) {
         prices = new uint[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
-            uint32 feed = feeds[i];
+            uint feed = feeds[i];
             prices[i] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
         }
     }
