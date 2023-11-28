@@ -1,33 +1,82 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import {FastUpdaters} from "./FastUpdaters.sol";
-import {FastUpdateManager} from "./FastUpdateManager.sol";
-import {Deltas} from "../lib/Deltas.sol";
+import { FastUpdaters, VIRTUAL_PROVIDER_BITS } from "./FastUpdaters.sol";
+import { FastUpdateIncentiveManager } from "./FastUpdateIncentiveManager.sol";
+import { Deltas } from "../lib/Deltas.sol";
 import {SortitionRound, SortitionCredential, verifySortitionCredential} from "../lib/Sortition.sol";
 import "../lib/Bn256.sol";
+import { IFastUpdater } from "../interface/IFastUpdater.sol";
 
-contract FastUpdater {
+contract FastUpdater is IFastUpdater {
     FastUpdaters private fastUpdaters;
-    FastUpdateManager private fastUpdateManager;
+    FastUpdateIncentiveManager private fastUpdateIncentiveManager;
 
-    uint32[1000] private anchorPrices;
-    int8[1000] private totalUnitDeltas; // maintained so that the true price is never negative, nor overflows
-
-    // A circular buffer
     SortitionRound[] private activeSortitionRounds;
+
+    function setFastUpdaters(FastUpdaters addr) public { // onlyGovernance
+        fastUpdaters = addr;
+    }
+
+    function setSortitionParameters() private returns(uint16 expectedSampleSize8x8) {
+        uint16 newPrecision1x15;
+        (expectedSampleSize8x8, newPrecision1x15) = fastUpdateIncentiveManager.nextSortitionParameters();
+        setPrecision(newPrecision1x15);
+    }
+
+    function setNextSortitionRound(bool newSeed, uint16 expectedSampleSize8x8) private {
+        uint epochId; // TODO: Get this correctly
+        uint cutoff = getScoreCutoff(expectedSampleSize8x8);
+        uint seed;
+        if (newSeed) { // TODO: this needs to be replaced with a real condition
+            for (uint i = 0; i < activeProviderAddresses.length; ++i) {
+                delete activeSortitionRounds[i];
+            }
+            Bn256.G1Point[] memory providerKeys;
+            uint[] memory providerWeights;
+            (seed, activeProviderAddresses, providerKeys, providerWeights) = fastUpdaters.nextProviderData(epochId);
+            for (uint i = 0; i < activeProviderAddresses.length; ++i) {
+                activeProviders[activeProviderAddresses[i]] = ActiveProviderData(providerKeys[i], providerWeights[i]);
+            }
+        }
+        else {
+            seed = getPreviousSortitionRound(0).seed + 1;
+        }
+        setNextSortitionRound(SortitionRound(seed, cutoff));
+    }
+
+    // Called by Flare daemon at the end of each block
+    function finalizeBlock(bool newSeed) public { // only governance
+        uint16 expectedSampleSize8x8 = setSortitionParameters();
+        setNextSortitionRound(newSeed, expectedSampleSize8x8);
+    }
+
+    function submitUpdates(FastUpdates calldata updates) external override {
+        uint blocksAgo = block.number - updates.sortitionBlock;
+        SortitionRound storage sortitionRound = getPreviousSortitionRound(blocksAgo);
+        ActiveProviderData storage providerData = activeProviders[msg.sender];
+
+        verifySortitionCredential(sortitionRound, providerData.publicKey, providerData.sortitionWeight, updates.sortitionCredential);
+        applyUpdates(updates.deltas);
+    }
+
+    function getScoreCutoff(uint16 expectedSampleSize8x8) private pure returns (uint) {
+        // The formula is: (exp. s.size)/(num. prov.) = (score)/(score range)
+        //   score range = 2**256
+        //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
+        //   exp. s.size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
+        return uint(expectedSampleSize8x8) << (256 - VIRTUAL_PROVIDER_BITS - 8);
+    }
 
     function ix(uint i) private view returns (uint) {
         return (i + block.number) % activeSortitionRounds.length;
     }
-
-    function getSortitionRound(uint i) private view returns (SortitionRound storage) {
+    function getPreviousSortitionRound(uint i) private view returns (SortitionRound storage) {
         assert(i < activeSortitionRounds.length);
-        return activeSortitionRounds[ix(i)];
+        return activeSortitionRounds[ix(activeSortitionRounds.length - i)];
     }
-
-    function setCurrentSortitionRound(SortitionRound memory x) private {
-        activeSortitionRounds[ix(0)] = x;
+    function setNextSortitionRound(SortitionRound memory x) private {
+        activeSortitionRounds[ix(1)] = x;
     }
 
     function setSubmissionWindow(uint w) private {
@@ -36,82 +85,93 @@ contract FastUpdater {
         for (uint i = 0; i < w; ++i) {
             activeSortitionRounds.push();
         }
-        fastUpdateManager.setSubmissionWindowLength(w);
     }
 
-    // Called by Flare daemon at the end of each block
-    function finalizeBlock(bool newSeed) public {
-        uint numProviders = fastUpdaters.numProviders();
-        // uint cutoff = fastUpdateManager.getScoreCutoff(numProviders);
-        uint cutoff = fastUpdateManager.getScoreCutoff();
+    uint32[1000] private anchorPrices;
+    int8[1000] private totalUnitDeltas;
 
-        uint seed = newSeed ? fastUpdaters.baseSeed() : getSortitionRound(0).seed + 1;
+    // stand-in for uint16[8]; precisionPowers[i] = 1 + (0x15 bit fraction) = precision1x15 ** (2 ** i)
+    bytes16 private precisionPowers; // Must call setPrecision before this is used!
 
-        setCurrentSortitionRound(SortitionRound(seed, cutoff));
+    function padRight16(uint16 x) private pure returns(bytes16) {
+        return bytes16(bytes2(x));
     }
 
-    function setFastUpdaters(FastUpdaters addr) public {
-        // onlyGovernance
-        fastUpdaters = addr;
+    function mulFixed1x15(uint16 x, uint16 y) private pure returns(uint16) {
+        return uint16((uint32(x) * uint32(y)) >> 15);
     }
 
-    function setFastUpdateManager(FastUpdateManager addr) public {
-        // onlyGovernance
-        fastUpdateManager = addr;
+    function setPrecision(uint16 scale1x15) private {
+        // Unavoidably expensive: when the precision changes the meaning of totalUnitDeltas also changes
+        for (uint feed = 0; feed < 1000; ++feed) {
+            weighAnchorPrice(feed);
+        }
+
+        bytes16 powers = padRight16(scale1x15);
+        for (uint i = 1; i < 7; ++i) {
+            scale1x15 = mulFixed1x15(scale1x15, scale1x15);
+            powers |= padRight16(scale1x15) >> (16 * i);
+        }
+        precisionPowers = powers;
     }
 
-    function submitUpdates(
-        uint64 sortitionBlock,
-        SortitionCredential calldata sortitionCredential,
-        Deltas calldata deltas
-    ) public {
-        uint blocksAgo = block.number - sortitionBlock;
-        SortitionRound storage sortitionRound = getSortitionRound(blocksAgo);
-        (Bn256.G1Point memory publicKey, uint sortitionWeight) = fastUpdaters.activeProviders(msg.sender);
+    function deltaFactor(int8 totalUnitDelta) private view returns (uint16 factor1x15) {
+        bytes16 powers = precisionPowers;
+        bytes1 deltaBinary = bytes1(uint8(totalUnitDelta));
+        factor1x15 = uint16(bytes2(hex"a0_00"));
 
-        verifySortitionCredential(sortitionRound, publicKey, sortitionWeight, sortitionCredential);
-        applyUpdates(deltas);
-    }
+        bytes1 deltaBitMask = hex"01";
+        bytes16 powerMask = hex"ff_00_00_00_00_00_00_00";
 
-    function fetchCurrentPrices(uint[] calldata feeds) public view returns (uint[] memory prices) {
-        uint[] memory feedDeltas = fastUpdateManager.getNumericDeltas(feeds);
-        prices = new uint[](feeds.length);
-        for (uint i = 0; i < feeds.length; ++i) {
-            prices[i] = currentPrice(feedDeltas[i], feeds[i]);
+        while (deltaBinary != bytes1(0)) {
+            if (deltaBinary & deltaBitMask != 0) {
+                uint16 power1x15 = uint16(bytes2(precisionPowers & powerMask));
+                factor1x15 = mulFixed1x15(factor1x15, power1x15);
+            }
+
+            powers <<= 16;
+            deltaBinary >>= 1;
         }
     }
 
-    function currentPrice(uint feedDelta, uint feed) private view returns (uint) {
-        // assumption: currentPrice() >= 0
-        return uint(currentPrice(anchorPrices[feed], feedDelta, totalUnitDeltas[feed]));
+    function fetchCurrentPrices(
+        uint[] calldata feeds
+    ) external view override returns(uint[] memory prices) {
+        prices = new uint[](feeds.length);
+        for (uint i = 0; i < feeds.length; ++i) {
+            uint feed = feeds[i];
+            prices[i] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
+        }
     }
 
-    function currentPrice(
-        uint anchorPrice,
-        uint feedDelta, // assumption: int(feedDelta) >= 0
-        int totalUnitDelta
-    ) private pure returns (int) {
-        int ap = int(uint(anchorPrice));
-        int pd = int(feedDelta) * totalUnitDelta;
-        return ap + pd;
+    function computePrice(uint32 anchorPrice, int8 totalUnitDelta) private view returns(uint32) {
+        return uint32(uint(anchorPrice) * uint(deltaFactor(totalUnitDelta)) >> 15);
     }
 
     function applyUpdates(Deltas calldata deltas) private {
         deltas.forEach(applyDelta); // TODO: optimize these calls for storage access
     }
 
-    function applyDelta(int delta, uint feed) private {
-        int newTotalUnitDelta = totalUnitDeltas[feed] + delta;
-        if (newTotalUnitDelta < type(int8).min || newTotalUnitDelta > type(int8).max) {
-            uint[] memory feed1 = new uint[](1);
-            feed1[0] = feed;
-            // i.e. getNumericDeltas([feed])
-            uint[] memory feedDeltas = fastUpdateManager.getNumericDeltas(feed1); // TODO: optimize these calls
-            int newAnchorPrice = currentPrice(anchorPrices[feed], feedDeltas[0], newTotalUnitDelta);
-            anchorPrices[feed] = newAnchorPrice < 0 ? 0 : uint32(uint(newAnchorPrice));
-            totalUnitDeltas[feed] = 0;
-        } else {
-            totalUnitDeltas[feed] = int8(newTotalUnitDelta);
+    function applyDelta(
+        int delta,
+        uint feed
+    ) private {
+        int8 totalUnitDelta = totalUnitDeltas[feed];
+
+        if (totalUnitDelta == type(int8).min || totalUnitDelta == type(int8).max) {
+            weighAnchorPrice(feed, int8(delta));
         }
+        else {
+            totalUnitDeltas[feed] = int8(totalUnitDelta + delta);
+        }
+    }
+
+    function weighAnchorPrice(uint feed, int8 extraDelta) private {
+        anchorPrices[feed] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
+        totalUnitDeltas[feed] = extraDelta;
+    }
+
+    function weighAnchorPrice(uint feed) private {
+        weighAnchorPrice(feed, 0);
     }
 }

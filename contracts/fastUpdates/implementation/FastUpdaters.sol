@@ -2,42 +2,27 @@
 pragma solidity 0.8.18;
 
 import {SortitionCredential, SortitionRound, verifySortitionCredential} from "../lib/Sortition.sol";
-import {IVoterRegistry} from "./IVoterRegistry.sol";
 import "../lib/Bn256.sol";
+import { IVoterRegistry } from "../interface/IVoterRegistry.sol";
+import { heapSort } from "../lib/Sort.sol";
+import { IFastUpdaters } from "../interface/IFastUpdaters.sol";
 
-contract FastUpdaters {
-    struct ActiveProviderData {
-        Bn256.G1Point publicKey;
-        uint sortitionWeight;
-    }
-
+contract FastUpdaters is IFastUpdaters {
     struct StagedProviderData {
         bool present;
         Bn256.G1Point publicKey;
         uint seedScore;
     }
 
-    mapping(address => ActiveProviderData) public activeProviders;
-    address[] activeProviderAddresses; // Must have uint8 length
-
-    function numProviders() public view returns (uint) {
-        return activeProviderAddresses.length;
-    }
-
-    mapping(address => StagedProviderData) stagedProviders;
+    mapping (address => StagedProviderData) stagedProviders;
     address[] stagedProviderAddresses;
 
     uint public baseSeed;
-
     IVoterRegistry voterRegistry;
 
     function setVoterRegistry(IVoterRegistry registry) public {
         // only governance
         voterRegistry = registry;
-    }
-
-    function sortitionPublicKey(address provider) public view returns (Bn256.G1Point memory) {
-        return activeProviders[provider].publicKey;
     }
 
     function stagedProviderData(
@@ -47,42 +32,64 @@ contract FastUpdaters {
         return StagedProviderData(true, publicKey, score);
     }
 
-    function registerNewProvider(Bn256.G1Point calldata publicKey, SortitionCredential calldata credential) public {
+    function registerNewProvider(NewProvider calldata newProvider) external override {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = verifySortitionCredential(round, publicKey, 0, credential);
-        stagedProviders[msg.sender] = stagedProviderData(publicKey, score);
+        (, uint score) = verifySortitionCredential(round, newProvider.publicKey, 0, newProvider.credential);
+        stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }
 
-    function finalizeRewardEpoch(uint epochId) public {
-        // only governance
-        // Clear active providers
-        for (uint i = 0; i < activeProviderAddresses.length; ++i) {
-            address provider = activeProviderAddresses[i];
-            delete activeProviders[provider];
-        }
-        delete activeProviderAddresses;
-
-        // Activate staged providers if they are registered voters
+    function nextProviderData(uint epochId) public returns (
+        uint seed,
+        address[] memory providerAddresses,
+        Bn256.G1Point[] memory providerKeys,
+        uint[] memory providerWeights
+    ) { // only governance
         uint totalWeight = voterRegistry.totalWeightPerRewardEpoch(epochId);
         (address[] memory voters, uint[] memory weights) = voterRegistry.votersForRewardEpoch(epochId);
-        uint[] memory seedScores = new uint[](voters.length);
+
+        // Activate staged providers if they are registered voters
+        // Here, we just pack them at the beginning of the already-allocated voters and weights arrays
+        uint numProviders;
         for (uint i = 0; i < voters.length; ++i) {
             address voter = voters[i];
             StagedProviderData storage voterData = stagedProviders[voter];
             if (voterData.present) {
+                voters[numProviders] = voter;
                 // Assuming that weights have only up to (256 - VIRTUAL_PROVIDER_BITS) bits (= 244, a safe assumption)
-                uint sortitionWeight = (weights[i] << VIRTUAL_PROVIDER_BITS) / totalWeight;
+                weights[numProviders] = (weights[i] << VIRTUAL_PROVIDER_BITS) / totalWeight;
 
-                activeProviders[voter] = ActiveProviderData(voterData.publicKey, sortitionWeight);
-                activeProviderAddresses.push(voter);
-                seedScores[activeProviderAddresses.length] = voterData.seedScore;
+                ++numProviders;
             }
         }
 
+        // Allocate just the right amount of space for the return values
+        uint[] memory seedScores = new uint[](numProviders);
+        providerAddresses = new address[](numProviders);
+        providerKeys = new Bn256.G1Point[](numProviders);
+        providerWeights = new uint[](numProviders);
+
+        // Copy the packed arrays into the return values
+        for (uint i = 0; i < numProviders; ++i) {
+            address voter = voters[i];
+            StagedProviderData storage voterData = stagedProviders[voter];
+
+            providerAddresses[i] = voter;
+            providerWeights[i] = weights[i];
+            providerKeys[i] = voterData.publicKey;
+            seedScores[i] = voterData.seedScore;
+        }
+
         // Recalculate the base seed
-        // The end-padding of the list of scores with 0s is unfortunate but harmless
-        baseSeed = uint(sha256(abi.encodePacked(seedScores)));
+        heapSort(seedScores);
+        seed = baseSeed = uint(sha256(abi.encodePacked(seedScores)));
+
+        // Finally, clear the staged providers for the next reward epoch
+        for (uint i = 0; i < stagedProviderAddresses.length; ++i) {
+            address addr = stagedProviderAddresses[i];
+            delete stagedProviders[addr];
+            delete stagedProviderAddresses[i];
+        }
     }
 }
 
