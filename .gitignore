@@ -23,3 +23,4 @@ nul
 .DS_Store
 .nyc_output
 nethereum-gen.settings
+.idea
