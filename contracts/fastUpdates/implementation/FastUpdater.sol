@@ -4,9 +4,10 @@ pragma solidity 0.8.18;
 import { FastUpdaters, VIRTUAL_PROVIDER_BITS } from "./FastUpdaters.sol";
 import { FastUpdateIncentiveManager } from "./FastUpdateIncentiveManager.sol";
 import { Deltas } from "../lib/Deltas.sol";
-import { ECPoint, ECPoint2, SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
+import { SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
+import "../lib/Bn256.sol";
 
 contract FastUpdater is IIFastUpdater {
     SortitionRound[] private activeSortitionRounds;
@@ -139,9 +140,7 @@ contract FastUpdater is IIFastUpdater {
         return uint32(uint(anchorPrice) * uint(deltaFactor(totalUnitDelta)) >> 15);
     }
 
-    function applyUpdates(
-        Deltas calldata deltas
-    ) private {
+    function applyUpdates(Deltas calldata deltas) private {
         deltas.forEach(applyDelta); // TODO: optimize these calls for storage access
     }
 

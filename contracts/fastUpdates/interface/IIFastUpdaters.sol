@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import { IFastUpdaters } from "./IFastUpdaters.sol";
 import { IVoterRegistry } from "./IVoterRegistry.sol";
-import { ECPoint } from "../lib/Sortition.sol";
+import "../lib/Bn256.sol";
 
 abstract contract IIFastUpdaters is IFastUpdaters {
     IVoterRegistry voterRegistry;
@@ -15,7 +15,7 @@ abstract contract IIFastUpdaters is IFastUpdaters {
     struct ProviderRegistry {
         uint seed;
         address[] providerAddresses;
-        ECPoint[] providerKeys;
+        Bn256.G1Point[] providerKeys;
         uint[] providerWeights;
     }
 

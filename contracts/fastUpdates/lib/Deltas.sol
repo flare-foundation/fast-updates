@@ -34,6 +34,6 @@ function forEachPackedBits2(bytes1 packedBits2, uint ij, function(int, uint) f) 
     }
 }
 
-using { forEach } for Deltas global;
-using { forEachPackedBytes32n } for bytes32;
-using { forEachPackedBits2 } for bytes1;
+using {forEach} for Deltas global;
+using {forEachPackedBytes32n} for bytes32;
+using {forEachPackedBits2} for bytes1;

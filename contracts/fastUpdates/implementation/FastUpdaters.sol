@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { ECPoint, ECPoint2, SortitionCredential, SortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
+import { SortitionCredential, SortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IVoterRegistry } from "../interface/IVoterRegistry.sol";
 import { heapSort } from "../lib/Sort.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
+import "../lib/Bn256.sol";
 
 contract FastUpdaters is IIFastUpdaters {
     struct StagedProviderData {
         bool present;
-        ECPoint publicKey;
+        Bn256.G1Point publicKey;
         uint seedScore;
     }
 
@@ -19,9 +20,9 @@ contract FastUpdaters is IIFastUpdaters {
     uint baseSeed;
 
     function stagedProviderData(
-        ECPoint calldata publicKey, 
+        Bn256.G1Point calldata publicKey,
         uint score
-    ) private pure returns(StagedProviderData memory) {
+    ) private pure returns (StagedProviderData memory) {
         return StagedProviderData(true, publicKey, score);
     }
 
@@ -54,7 +55,7 @@ contract FastUpdaters is IIFastUpdaters {
         // Allocate just the right amount of space for the return values
         uint[] memory seedScores = new uint[](numProviders);
         registry.providerAddresses = new address[](numProviders);
-        registry.providerKeys = new ECPoint[](numProviders);
+        registry.providerKeys = new Bn256.G1Point[](numProviders);
         registry.providerWeights = new uint[](numProviders);
 
         // Copy the packed arrays into the return values
@@ -69,7 +70,7 @@ contract FastUpdaters is IIFastUpdaters {
         }
 
         // Recalculate the base seed
-        heapSort(seedScores);
+        //heapSort(seedScores);
         registry.seed = baseSeed = uint(sha256(abi.encodePacked(seedScores)));
 
         // Finally, clear the staged providers for the next reward epoch

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { ECPoint, SortitionCredential } from "../lib/Sortition.sol";
+import {SortitionCredential} from "../lib/Sortition.sol";
+import "../lib/Bn256.sol";
 
 abstract contract IFastUpdaters {
     struct NewProvider {
-        ECPoint publicKey;
+        Bn256.G1Point publicKey;
         SortitionCredential credential;
     }
 
