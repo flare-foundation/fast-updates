@@ -81,7 +81,7 @@ contract FastUpdaters is IFastUpdaters {
         }
 
         // Recalculate the base seed
-        heapSort(seedScores);
+        // heapSort(seedScores); // todo: this line is commented since heap sort does not work (gives errors)
         seed = baseSeed = uint(sha256(abi.encodePacked(seedScores)));
 
         // Finally, clear the staged providers for the next reward epoch

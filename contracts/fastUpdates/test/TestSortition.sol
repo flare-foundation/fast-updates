@@ -2,8 +2,8 @@
 pragma solidity 0.8.18;
 
 import "hardhat/console.sol";
-import "./Bn256.sol";
-import {SortitionRound, SortitionCredential, verifySortitionCredential, verifySortitionProof} from "./Sortition.sol";
+import "../lib/Bn256.sol";
+import {SortitionRound, SortitionCredential, verifySortitionCredential, verifySortitionProof} from "../lib/Sortition.sol";
 
 contract TestSortitionContract {
     function testVerifySortitionCredential(
