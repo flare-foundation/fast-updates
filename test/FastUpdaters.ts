@@ -39,7 +39,7 @@ contract(`FastUpdaters.sol; ${getTestFile(__filename)}`, async () => {
         for (let i = 0; i < NUM_ACCOUNTS; i++) {
             const key: SortitionKey = KeyGen();
             keys[i] = key;
-            const replicate = BigInt(2);
+            const replicate = BigInt(0); // Registration doesn't allow cherry-picking a replicate
             const proof: Proof = VerifiableRandomness(key, seed, replicate);
             proofs[i] = proof;
             const pubKey = [key.pk.x, key.pk.y];
@@ -48,14 +48,14 @@ contract(`FastUpdaters.sol; ${getTestFile(__filename)}`, async () => {
             await fastUpdaters.registerNewProvider(newProvider, { from: accounts[i + 1].address });
         }
 
-        const nextData = await fastUpdaters.nextProviderData.call(TEST_EPOCH);
+        const nextData = await fastUpdaters.nextProviderRegistry.call(TEST_EPOCH);
         for (let i = 0; i < NUM_ACCOUNTS; i++) {
             const providerAddress = nextData[1][i];
             expect(providerAddress).to.equal(accounts[i + 1].address);
             const providerKey = nextData[2][i];
             expect(providerKey[0]).to.equal(keys[i].pk.x);
             expect(providerKey[1]).to.equal(keys[i].pk.y);
-            const providerWeight = nextData[3][i];
+            const providerWeight = parseInt(nextData[3][i]);
             const expectedWeight = Math.floor((VOTER_WEIGHT << 12) / (VOTER_WEIGHT * NUM_ACCOUNTS));
             expect(providerWeight).to.equal(expectedWeight);
         }

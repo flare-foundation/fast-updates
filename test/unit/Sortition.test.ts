@@ -25,18 +25,19 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
 
         expect(check).to.equal(true);
     });
-    it("should correctly accept or deny the randomness", async () => {
+    it("should correctly accept or reject the randomness", async () => {
         const key: SortitionKey = KeyGen();
         const scoreCutoff = BigInt(2) ** BigInt(256 - 8);
         for (;;) {
             const seed: bigint = RandInt(bn254.CURVE.n);
             const replicate = RandInt(bn254.CURVE.n);
+            const weight = replicate + BigInt(1);
 
             const proof: Proof = VerifiableRandomness(key, seed, replicate);
             const sortitionRound = [seed, scoreCutoff];
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
-            const check = await sortition.testVerifySortitionCredential(sortitionRound, pubKey, sortitionCredential);
+            const check = await sortition.testVerifySortitionCredential(sortitionRound, weight, pubKey, sortitionCredential);
 
             if (proof.gamma.x > scoreCutoff) {
                 expect(check).to.equal(false);

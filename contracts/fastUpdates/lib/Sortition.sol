@@ -36,7 +36,7 @@ function verifySortitionCredential(
     uint weight,
     SortitionCredential memory sortitionCredential
 ) view returns (bool, uint256) {
-    require(sortitionCredential.replicate < weight);
+    require(sortitionCredential.replicate < weight, "Credential's replicate value is not less than provider's weight");
     bool check = verifySortitionProof(sortitionRound.seed, pubKey, sortitionCredential);
     uint256 vrfVal = sortitionCredential.gamma.x;
 

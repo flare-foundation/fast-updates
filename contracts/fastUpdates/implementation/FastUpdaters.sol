@@ -28,7 +28,7 @@ contract FastUpdaters is IIFastUpdaters {
 
     function registerNewProvider(NewProvider calldata newProvider) external override {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = verifySortitionCredential(round, newProvider.publicKey, 0, newProvider.credential);
+        (, uint score) = verifySortitionCredential(round, newProvider.publicKey, 1, newProvider.credential);
         stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }

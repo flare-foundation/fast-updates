@@ -8,12 +8,13 @@ import {SortitionRound, SortitionCredential, verifySortitionCredential, verifySo
 contract TestSortitionContract {
     function testVerifySortitionCredential(
         SortitionRound calldata sortitionRound,
+        uint weight,
         Bn256.G1Point calldata pubKey,
         SortitionCredential calldata sortitionCredential
     ) public view returns (bool) {
         bool check;
         uint256 score;
-        (check, score) = verifySortitionCredential(sortitionRound, pubKey, 0, sortitionCredential);
+        (check, score) = verifySortitionCredential(sortitionRound, pubKey, weight, sortitionCredential);
         return check;
     }
 
