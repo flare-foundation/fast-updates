@@ -33,9 +33,10 @@ struct SortitionCredential {
 function verifySortitionCredential(
     SortitionRound memory sortitionRound,
     Bn256.G1Point memory pubKey,
-    uint weight, // todo
+    uint weight,
     SortitionCredential memory sortitionCredential
 ) view returns (bool, uint256) {
+    require(sortitionCredential.replicate < weight);
     bool check = verifySortitionProof(sortitionRound.seed, pubKey, sortitionCredential);
     uint256 vrfVal = sortitionCredential.gamma.x;
 
