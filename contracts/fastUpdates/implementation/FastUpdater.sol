@@ -7,6 +7,7 @@ import { Deltas } from "../lib/Deltas.sol";
 import { SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
+import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
 
 contract FastUpdater is IIFastUpdater {
@@ -79,11 +80,14 @@ contract FastUpdater is IIFastUpdater {
         }
     }
 
+    // An FTSO v2 price is 32-bit, as per the ftso-scaling repo
     uint32[1000] private anchorPrices;
+    // We accumulate -128..127 unit deltas before recomputing the anchor price
     int8[1000] private totalUnitDeltas;
 
-    // stand-in for uint16[8]; precisionPowers[i] = 1 + (0x15 bit fraction) = precision1x15 ** (2 ** i)
-    bytes16 private precisionPowers; // Must call setPrecision before this is used!
+    // stand-in for uint16[8]; precision1x15Powers[i] = 1 + (0x15 bit fraction) = precision1x15 ** (2 ** i)
+    // 15 bits of precision gives price granularity of 5-6 decimal places, more than is used in the FTSO
+    bytes16 private precision1x15Powers; // Must call setPrecision before this is used!
 
     function padRight16(uint16 x) private pure returns(bytes16) {
         return bytes16(bytes2(x));
@@ -104,11 +108,11 @@ contract FastUpdater is IIFastUpdater {
             scale1x15 = mulFixed1x15(scale1x15, scale1x15);
             powers |= padRight16(scale1x15) >> (16 * i);
         }
-        precisionPowers = powers;
+        precision1x15Powers = powers;
     }
 
     function deltaFactor(int8 totalUnitDelta) private view returns (uint16 factor1x15) {
-        bytes16 powers = precisionPowers;
+        bytes16 powers = precision1x15Powers;
         bytes1 deltaBinary = bytes1(uint8(totalUnitDelta));
         factor1x15 = uint16(bytes2(hex"a0_00"));
 
@@ -117,7 +121,7 @@ contract FastUpdater is IIFastUpdater {
 
         while (deltaBinary != bytes1(0)) {
             if (deltaBinary & deltaBitMask != 0) {
-                uint16 power1x15 = uint16(bytes2(precisionPowers & powerMask));
+                uint16 power1x15 = uint16(bytes2(powers & powerMask));
                 factor1x15 = mulFixed1x15(factor1x15, power1x15);
             }
 

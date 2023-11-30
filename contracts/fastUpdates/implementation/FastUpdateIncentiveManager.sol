@@ -8,22 +8,21 @@ import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentive
 using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16, CL.circularResize, CL.clear, CL.sum } for uint16[];
 
 contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
-    uint private excessIncentiveValue;
-
     uint16[] private sampleIncreases;
     uint16[] private precisionIncreases;
     uint16[] private rangeIncreases;
 
-    uint16 private baseSampleSize8x8;
-    uint16 private basePrecision0x16;
     uint16 private baseRange8x8;
+    uint16 private baseSampleSize8x8;
+    uint16 private basePrecision1x15;
 
     uint private rangeIncreasePrice;
     uint private sampleIncreaseLimit;
+    uint private excessIncentiveValue;
 
     function nextSortitionParameters() public override returns (uint16 newSampleSize, uint16 newPrecision) { // only governance
         newSampleSize = baseSampleSize8x8 + sampleIncreases.sum();
-        newPrecision = basePrecision0x16 + precisionIncreases.sum();
+        newPrecision = basePrecision1x15 + precisionIncreases.sum();
         sampleIncreases.circularZero16();
         precisionIncreases.circularZero16();
     }
