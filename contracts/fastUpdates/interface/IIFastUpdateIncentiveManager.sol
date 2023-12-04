@@ -2,6 +2,7 @@
 pragma solidity 0.8.18;
 
 import { IFastUpdateIncentiveManager } from "./IFastUpdateIncentiveManager.sol";
+import "../lib/FixedPointArithmetic.sol" as FPA;
 
 abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager {
     address payable internal rewardPool;
@@ -10,5 +11,5 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager {
         rewardPool = newRewardPool;
     }
 
-    function nextSortitionParameters() public virtual returns(uint16 newRange8x8, uint16 newPrecision1x15);
+    function nextUpdateParameters() public virtual returns(FPA.SampleSize newSampleSize, FPA.Scale newScale);
 }
