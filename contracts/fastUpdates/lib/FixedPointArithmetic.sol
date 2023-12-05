@@ -7,6 +7,7 @@ type SampleSize is uint16; // 7x8
 type Range is uint16; // 8x8
 type Price is uint32; // 32x0
 type Delta is int8; // 7x0 signed
+type Fractional is uint16; // 0x16
 
 Scale constant one = Scale.wrap(1 << 15); // 1.0000 0000 0000 000 binary
 Precision constant zeroP = Precision.wrap(0);
@@ -105,6 +106,36 @@ function mul(Price x, Scale y) pure returns (Price z) {
     z = Price.wrap(uint32(zWide));
 }
 
+function mul(uint x, Range y) pure returns (uint z) {
+    uint yWide = uint(Range.unwrap(y));
+    z = (x * yWide) >> 8;
+}
+
+function mul(Fractional x, uint y) pure returns (uint z) {
+    uint xWide = uint(Fractional.unwrap(x));
+    z = (xWide * y) >> 16;
+}
+
+function mul(Fractional x, SampleSize y) pure returns (SampleSize z) {
+    uint32 xWide = uint32(Fractional.unwrap(x));
+    uint32 yWide = uint32(SampleSize.unwrap(y));
+    uint32 zWide = (xWide * yWide) >> 16;
+    z = SampleSize.wrap(uint16(zWide));
+}
+
+function frac(Range x, Range y) pure returns (Fractional z) {
+    uint32 xWide = uint32(Range.unwrap(x)) << 16;
+    uint32 yWide = uint32(Range.unwrap(y));
+    uint32 zWide = (xWide / yWide) >> 16;
+    z = Fractional.wrap(uint16(zWide));
+}
+
+function frac(uint x, uint y) pure returns (Fractional z) {
+    uint yNarrow = y >> 16;
+    uint zWide = (x / yNarrow) >> 240;
+    z = Fractional.wrap(uint16(zWide));
+}
+
 function div(Scale x, Scale y) pure returns (Scale z) {
     uint32 xWide = uint32(Scale.unwrap(x)) << 15;
     uint32 yWide = uint32(Scale.unwrap(y));
@@ -113,17 +144,17 @@ function div(Scale x, Scale y) pure returns (Scale z) {
 }
 
 function div(Range x, Range y) pure returns (Range z) {
-    uint32 xWide = uint32(Range.unwrap(x)) << 8;
-    uint32 yWide = uint32(Range.unwrap(y));
-    uint32 zWide = (xWide / yWide) >> 8;
+    uint24 xWide = uint24(Range.unwrap(x)) << 8;
+    uint24 yWide = uint24(Range.unwrap(y));
+    uint24 zWide = (xWide / yWide) >> 8;
     z = Range.wrap(uint16(zWide));
 }
 
 function div(Range x, SampleSize y) pure returns (Precision z) {
-    uint32 xWide = uint32(Range.unwrap(x)) << 8;
-    uint32 yWide = uint32(Range.unwrap(y));
-    uint32 zWide = (xWide / yWide) >> 8;
-    z = Range.wrap(uint16(zWide));
+    uint24 xWide = uint24(Range.unwrap(x)) << 8;
+    uint24 yWide = uint24(SampleSize.unwrap(y));
+    uint24 zWide = (xWide / yWide) >> 8;
+    z = Precision.wrap(uint16(zWide));
 }
 
 function pow(Scale[8] storage binaryPowers, Delta _power) view returns (Scale result) {

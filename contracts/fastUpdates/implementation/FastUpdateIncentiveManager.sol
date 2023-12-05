@@ -17,10 +17,10 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     FPA.Precision private basePrecision;
     FPA.Range private baseRange;
 
-    FPA.SampleSize private sampleIncreaseLimit;
+    FPA.SampleSize private sampleIncreaseLimit; // == 1/B
+    uint private rangeIncreasePrice; // == A
 
-    uint private rangeIncreasePrice;
-    uint private excessIncentiveValue;
+    uint private excessIncentiveValue; // Must be positive
 
     function computeSampleSize() view private returns(FPA.SampleSize) {
         return FPA.add(baseSampleSize, FPA.sum(sampleIncreases));
@@ -84,16 +84,16 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
 
         uint contribution = msg.value;
         FPA.Range rangeIncrease = offer.rangeIncrease;
+        require(!FPA.lessThan(rangeIncrease, FPA.zeroR), "Range increase must be nonnegative");
         FPA.Range rangeNow = computeRange();
         if (FPA.lessThan(offer.rangeLimit, FPA.add(rangeNow, rangeIncrease))) {
-            FPA.Range newRangeIncrease = FPA.sub(offer.rangeLimit, rangeNow);
-            if (FPA.lessThan(newRangeIncrease, FPA.zeroR)) newRangeIncrease = FPA.zeroR;
-            contribution *= FPA.div(newRangeIncrease, rangeIncrease);
+            FPA.Range newRangeIncrease = FPA.lessThan(offer.rangeLimit, rangeNow) ? FPA.zeroR : FPA.sub(offer.rangeLimit, rangeNow);
+            contribution = FPA.mul(FPA.frac(newRangeIncrease, rangeIncrease), contribution);
             rangeIncrease = newRangeIncrease;
         }
-        uint dx = contribution - rangeIncreasePrice * rangeIncrease;
+        uint dx = contribution - FPA.mul(rangeIncreasePrice, rangeIncrease);
         excessIncentiveValue += dx;
-        FPA.SampleSize de = (dx / excessIncentiveValue) * sampleIncreaseLimit;
+        FPA.SampleSize de = FPA.mul(FPA.frac(dx, excessIncentiveValue), sampleIncreaseLimit);
 
         require(!FPA.lessThan(de, FPA.zeroS), "Incentive offer must not decrease the sample size");
         incrementExpectedSampleSize(de);
@@ -103,7 +103,7 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
         incrementRange(rangeIncrease);
 
         FPA.Precision precisionNow = computePrecision();
-        FPA.Precision newPrecision = rangeNow / sampleSizeNow;
+        FPA.Precision newPrecision = FPA.div(rangeNow, sampleSizeNow);
         incrementPrecision(FPA.sub(newPrecision, precisionNow));
 
         payable(msg.sender).transfer(msg.value - contribution);

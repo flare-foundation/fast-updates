@@ -10,6 +10,7 @@ import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
 
+// TODO: governance functions to change the anchor prices, e.g. at the time of deployment of this contract
 contract FastUpdater is IIFastUpdater {
     // Circular list
     SortitionRound[] private activeSortitionRounds;

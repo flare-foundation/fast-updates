@@ -7,7 +7,7 @@ import "../lib/FixedPointArithmetic.sol" as FPA;
 abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager {
     address payable internal rewardPool;
 
-    function setRewardPool(address payable newRewardPool) external {
+    function setRewardPool(address payable newRewardPool) external { // only governance
         rewardPool = newRewardPool;
     }
 
