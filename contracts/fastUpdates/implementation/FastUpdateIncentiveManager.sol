@@ -10,11 +10,9 @@ using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16
 
 contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     FPA.SampleSize[] private sampleIncreases;
-    FPA.Precision[] private precisionIncreases;
     FPA.Range[] private rangeIncreases;
 
     FPA.SampleSize private baseSampleSize;
-    FPA.Precision private basePrecision;
     FPA.Range private baseRange;
 
     FPA.SampleSize private sampleIncreaseLimit; // == 1/B
@@ -30,8 +28,8 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
         return computeSampleSize();
     }
 
-    function computePrecision() view private returns(FPA.Precision p) {
-        p = FPA.add(basePrecision, FPA.sum(precisionIncreases));
+    function computePrecision() view private returns(FPA.Precision) {
+        return FPA.div(computeRange(), computeSampleSize());
     }
 
     function getPrecision() view external override returns(FPA.Precision) {
@@ -68,45 +66,33 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     }
 
     function offerIncentive(IncentiveOffer calldata offer) external payable override {
-        // let c = total amount received as incentive
-        //     r = one-block relative variation range of numeric delta
-        //     p = precision of numeric delta
-        //     e = expected sample size
-        // then: r = (1 + p)^e - 1 = pe (approximate, for small p)
-        //       c = A r + C exp(B e)
-        // equivalently: dc = A dr + B (c - A r) de
-        // Given arguments dr = variationRangeIncrease, dc = msg.value, and current values of r, c: solve for de
-        // Then r' = r + dr
-        //      e' = e + de
-        //      p' = r'/e'
-        // and we update e', p'
-        // TODO: fixed-point arithmetic
+        (uint dc, FPA.Range dr) = processIncentiveOffer(offer);
+        FPA.SampleSize de = sampleSizeIncrease(dc, dr);
 
-        uint contribution = msg.value;
-        FPA.Range rangeIncrease = offer.rangeIncrease;
-        require(!FPA.lessThan(rangeIncrease, FPA.zeroR), "Range increase must be nonnegative");
+        incrementExpectedSampleSize(de);
+        incrementRange(dr);
+
+        rewardPool.transfer(dc);
+        payable(msg.sender).transfer(msg.value - dc);
+    }
+
+    function processIncentiveOffer(IncentiveOffer calldata offer) private returns (uint contribution, FPA.Range rangeIncrease) {
+        contribution = msg.value;
+        rangeIncrease = offer.rangeIncrease;
+
         FPA.Range rangeNow = computeRange();
         if (FPA.lessThan(offer.rangeLimit, FPA.add(rangeNow, rangeIncrease))) {
             FPA.Range newRangeIncrease = FPA.lessThan(offer.rangeLimit, rangeNow) ? FPA.zeroR : FPA.sub(offer.rangeLimit, rangeNow);
             contribution = FPA.mul(FPA.frac(newRangeIncrease, rangeIncrease), contribution);
             rangeIncrease = newRangeIncrease;
         }
-        uint dx = contribution - FPA.mul(rangeIncreasePrice, rangeIncrease);
-        excessIncentiveValue += dx;
-        FPA.SampleSize de = FPA.mul(FPA.frac(dx, excessIncentiveValue), sampleIncreaseLimit);
-
-        require(!FPA.lessThan(de, FPA.zeroS), "Incentive offer must not decrease the sample size");
-        incrementExpectedSampleSize(de);
-        FPA.SampleSize sampleSizeNow = computeSampleSize();
-
-        rangeNow = FPA.add(rangeNow, rangeIncrease);
-        incrementRange(rangeIncrease);
-
-        FPA.Precision precisionNow = computePrecision();
-        FPA.Precision newPrecision = FPA.div(rangeNow, sampleSizeNow);
-        incrementPrecision(FPA.sub(newPrecision, precisionNow));
-
-        payable(msg.sender).transfer(msg.value - contribution);
-        rewardPool.transfer(contribution);
     }
-}  
+
+    function sampleSizeIncrease(uint dc, FPA.Range dr) private returns(FPA.SampleSize de) {
+        uint rangeCost = FPA.mul(rangeIncreasePrice, dr);
+        require(dc >= rangeCost, "Insufficient contribution to pay for range increase");
+        uint dx = dc - rangeCost;
+        excessIncentiveValue += dx;
+        de = FPA.mul(FPA.frac(dx, excessIncentiveValue), sampleIncreaseLimit);
+    }
+}
