@@ -99,16 +99,15 @@ contract FastUpdater is IIFastUpdater {
 
     function fetchCurrentPrices(
         uint[] calldata feeds
-    ) external view override returns(uint[] memory prices) {
-        prices = new uint[](feeds.length);
+    ) external view override returns(FPA.Price[] memory prices) {
+        prices = new FPA.Price[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
-            uint feed = feeds[i];
-            prices[i] = FPA.Price.unwrap(computePrice(anchorPrices[feed], totalUnitDeltas[feed]));
+            prices[i] = computePrice(feeds[i]);
         }
     }
 
-    function computePrice(FPA.Price anchorPrice, FPA.Delta totalUnitDelta) private view returns(FPA.Price) {
-        return FPA.mul(anchorPrice, FPA.pow(scalePowers, totalUnitDelta));
+    function computePrice(uint feed) private view returns(FPA.Price) {
+        return FPA.mul(anchorPrices[feed], FPA.pow(scalePowers, totalUnitDeltas[feed]));
     }
 
     function applyUpdates(Deltas calldata deltas) private {
@@ -130,7 +129,7 @@ contract FastUpdater is IIFastUpdater {
     }
 
     function weighAnchorPrice(uint feed, FPA.Delta extraDelta) private {
-        anchorPrices[feed] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
+        anchorPrices[feed] = computePrice(feed);
         totalUnitDeltas[feed] = extraDelta;
     }
 

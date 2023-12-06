@@ -11,14 +11,24 @@ using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16
 contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     FPA.SampleSize[] private sampleIncreases;
     FPA.Range[] private rangeIncreases;
+    FPA.Fee[] private excessOfferIncreases;
 
-    FPA.SampleSize private baseSampleSize;
-    FPA.Range private baseRange;
+    // This is an optimization to prevent recalculation of this number in every offer.
+    // Extra bookkeeping is required.
+    FPA.Range range;
 
-    FPA.SampleSize private sampleIncreaseLimit; // == 1/B
-    uint private rangeIncreasePrice; // == A
+    // This is an optimization to prevent recalculation of this number in every offer.
+    // Extra bookkeeping is required.
+    FPA.Fee excessOfferValue;
 
-    uint private excessIncentiveValue; // Must be positive
+    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip) {
+        rewardPool = _rp;
+        baseSampleSize = _bss;
+        baseRange = range = _br;
+        sampleIncreaseLimit = _sil;
+        rangeIncreasePrice = _rip;
+        excessOfferValue = FPA.Fee.wrap(1); // Arbitrary initial value, but must not be 0
+    }
 
     function computeSampleSize() view private returns(FPA.SampleSize) {
         return FPA.add(baseSampleSize, FPA.sum(sampleIncreases));
@@ -44,9 +54,11 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
         return computeRange();
     }
 
+    // This is expected to be called only by FastUpdater, and only at the end of a block.
     function nextUpdateParameters() public override returns (FPA.SampleSize newSampleSize, FPA.Scale newScale) { // only governance
         newSampleSize = computeSampleSize();
         newScale = FPA.scaleWithPrecision(computePrecision());
+        excessOfferValue = FPA.sub(excessOfferValue, excessOfferIncreases[0]);
         
         // sampleIncreases.circularZero16();
         // precisionIncreases.circularZero16();
@@ -57,27 +69,29 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
         // sampleIncreases.circularAdd16(inc8x8);
     }
 
-    function incrementPrecision(FPA.Precision dp) private {
-        // sampleIncreases.circularAdd16(inc1x15);
-    }
-
     function incrementRange(FPA.Range dr) private {
         // rangeIncreases.circularAdd16(inc8x8);
     }
 
+    function incrementExcessOffer(FPA.Fee dx) private {
+        excessOfferValue = FPA.add(excessOfferValue, dx);
+        // more...
+    }
+
     function offerIncentive(IncentiveOffer calldata offer) external payable override {
-        (uint dc, FPA.Range dr) = processIncentiveOffer(offer);
+        (FPA.Fee dc, FPA.Range dr) = processIncentiveOffer(offer);
         FPA.SampleSize de = sampleSizeIncrease(dc, dr);
 
         incrementExpectedSampleSize(de);
         incrementRange(dr);
 
-        rewardPool.transfer(dc);
-        payable(msg.sender).transfer(msg.value - dc);
+        rewardPool.transfer(FPA.Fee.unwrap(dc));
+        payable(msg.sender).transfer(msg.value - FPA.Fee.unwrap(dc));
     }
 
-    function processIncentiveOffer(IncentiveOffer calldata offer) private returns (uint contribution, FPA.Range rangeIncrease) {
-        contribution = msg.value;
+    function processIncentiveOffer(IncentiveOffer calldata offer) private returns (FPA.Fee contribution, FPA.Range rangeIncrease) {
+        require(msg.value >> 240 == 0, "Incentive offer value capped at 240 bits");
+        contribution = FPA.Fee.wrap(uint240(msg.value));
         rangeIncrease = offer.rangeIncrease;
 
         FPA.Range rangeNow = computeRange();
@@ -88,11 +102,11 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
         }
     }
 
-    function sampleSizeIncrease(uint dc, FPA.Range dr) private returns(FPA.SampleSize de) {
-        uint rangeCost = FPA.mul(rangeIncreasePrice, dr);
-        require(dc >= rangeCost, "Insufficient contribution to pay for range increase");
-        uint dx = dc - rangeCost;
-        excessIncentiveValue += dx;
-        de = FPA.mul(FPA.frac(dx, excessIncentiveValue), sampleIncreaseLimit);
+    function sampleSizeIncrease(FPA.Fee dc, FPA.Range dr) private returns(FPA.SampleSize de) {
+        FPA.Fee rangeCost = FPA.mul(rangeIncreasePrice, dr);
+        require(!FPA.lessThan(rangeCost, dc), "Insufficient contribution to pay for range increase");
+        FPA.Fee dx = FPA.sub(dc, rangeCost);
+        incrementExcessOffer(dx);
+        de = FPA.mul(FPA.frac(dx, excessOfferValue), sampleIncreaseLimit);
     }
 }
