@@ -21,6 +21,18 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     uint private rangeIncreasePrice;
     uint private sampleIncreaseLimit;
 
+    function setBase(uint16 _baseSampleSize8x8, uint16 _basePrecision0x16, uint16 _baseRange8x8, uint16[] calldata _sampleIncreases, uint16[] calldata _precisionIncreases ) public { // only governance
+        baseSampleSize8x8 = _baseSampleSize8x8;
+        basePrecision0x16 = _basePrecision0x16;
+        baseRange8x8 = _baseRange8x8;
+        for (uint i = 0; i < _sampleIncreases.length; ++i) {
+            sampleIncreases.push(_sampleIncreases[i]);
+        }
+        for (uint i = 0; i < _precisionIncreases.length; ++i) {
+            precisionIncreases.push(_precisionIncreases[i]);
+        }
+    }
+
     function nextSortitionParameters() public override returns (uint16 newSampleSize, uint16 newPrecision) { // only governance
         newSampleSize = baseSampleSize8x8 + sampleIncreases.sum();
         newPrecision = basePrecision0x16 + precisionIncreases.sum();

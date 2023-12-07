@@ -21,6 +21,7 @@ contract(`FastUpdaters.sol; ${getTestFile(__filename)}`, async () => {
     let fastUpdaters: FastUpdatersInstance;
     let voterRegistry: VoterRegistryInstance;
     let accounts: Account[];
+    let seed: bigint;
     before(async () => {
         accounts = loadAccounts(web3);
         // const governance = accounts[0];
@@ -30,10 +31,11 @@ contract(`FastUpdaters.sol; ${getTestFile(__filename)}`, async () => {
         for (let i = 1; i <= NUM_ACCOUNTS; i++) {
             await voterRegistry.registerAsAVoter(TEST_EPOCH, toBN(VOTER_WEIGHT), { from: accounts[i].address });
         }
+        const seedBN = await fastUpdaters.getBaseSeed.call();
+        seed = BigInt(seedBN.toString());
     });
 
     it("should register a new provider", async () => {
-        const seed = RandInt(bn254.CURVE.n);
         const keys = new Array<SortitionKey>(NUM_ACCOUNTS);
         const proofs = new Array<Proof>(NUM_ACCOUNTS);
         for (let i = 0; i < NUM_ACCOUNTS; i++) {

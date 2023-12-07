@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 import {Bn256} from "./Bn256.sol";
 
 // Encoding of EC point when space is premium

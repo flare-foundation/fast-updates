@@ -8,9 +8,17 @@ import { SortitionRound, SortitionCredential, verifySortitionCredential } from "
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 import "../lib/Bn256.sol";
+import "hardhat/console.sol";
+
 
 contract FastUpdater is IIFastUpdater {
     SortitionRound[] private activeSortitionRounds;
+
+    function setAnchorPrices(uint32[] calldata _anchorPrices) public { // only governance
+        for (uint i = 0; i < _anchorPrices.length; ++i) {
+            anchorPrices[i] = _anchorPrices[i];
+        }
+    }
 
     function setSortitionParameters() private returns(uint16 expectedSampleSize8x8) {
         uint16 newPrecision1x15;
@@ -70,6 +78,7 @@ contract FastUpdater is IIFastUpdater {
         return activeSortitionRounds[ix(activeSortitionRounds.length - i)];
     }
     function setNextSortitionRound(SortitionRound memory x) private {
+        console.log(ix(1), x.seed, x.scoreCutoff);
         activeSortitionRounds[ix(1)] = x;
     }
     function setSubmissionWindow(uint w) external override { // only governance
@@ -110,7 +119,7 @@ contract FastUpdater is IIFastUpdater {
     function deltaFactor(int8 totalUnitDelta) private view returns (uint16 factor1x15) {
         bytes16 powers = precisionPowers;
         bytes1 deltaBinary = bytes1(uint8(totalUnitDelta));
-        factor1x15 = uint16(bytes2(hex"a0_00"));
+        factor1x15 = uint16(bytes2(hex"80_00")); // error here?
 
         bytes1 deltaBitMask = hex"01";
         bytes16 powerMask = hex"ff_00_00_00_00_00_00_00";

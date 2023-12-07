@@ -19,6 +19,10 @@ contract FastUpdaters is IIFastUpdaters {
 
     uint baseSeed;
 
+    function getBaseSeed() public returns (uint) {
+        return baseSeed;
+    }
+
     function stagedProviderData(
         Bn256.G1Point calldata publicKey,
         uint score
@@ -28,7 +32,8 @@ contract FastUpdaters is IIFastUpdaters {
 
     function registerNewProvider(NewProvider calldata newProvider) external override {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = verifySortitionCredential(round, newProvider.publicKey, 1, newProvider.credential);
+        (bool check, uint score) = verifySortitionCredential(round, newProvider.publicKey, 1, newProvider.credential);
+        require(check, "provided credential not valid");
         stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }
