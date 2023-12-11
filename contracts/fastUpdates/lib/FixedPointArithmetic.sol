@@ -83,6 +83,10 @@ function lessThan(Fee x, Fee y) pure returns (bool) {
     return Fee.unwrap(x) < Fee.unwrap(y);
 }
 
+function lessThan(Range x, SampleSize y) pure returns (bool) {
+    return Range.unwrap(x) < SampleSize.unwrap(y);
+}
+
 function mul(Scale x, Scale y) pure returns(Scale z) {
     uint32 xWide = uint32(Scale.unwrap(x));
     uint32 yWide = uint32(Scale.unwrap(y));
