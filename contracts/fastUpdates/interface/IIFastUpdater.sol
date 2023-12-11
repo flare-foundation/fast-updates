@@ -19,5 +19,5 @@ abstract contract IIFastUpdater is IFastUpdater {
 
     function setSubmissionWindow(uint) external virtual;
 
-    function finalizeBlock() public virtual;
+    function prepareForNewBlock(bool, uint) public virtual;
 }

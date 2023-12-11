@@ -14,6 +14,15 @@ import "hardhat/console.sol";
 contract FastUpdater is IIFastUpdater {
     SortitionRound[] private activeSortitionRounds;
 
+    function getSortitionRound(uint blockNum) public view returns (uint seed, uint cutoff) {
+        // console.log("get", ix(activeSortitionRounds.length - i));
+        // assert(i < activeSortitionRounds.length);
+        SortitionRound memory sortitionRound = activeSortitionRounds[blockNum % activeSortitionRounds.length];
+        seed = sortitionRound.seed;
+        cutoff = sortitionRound.scoreCutoff;
+        // blockNum = block.number;
+    }
+
     function setAnchorPrices(uint32[] calldata _anchorPrices) public { // only governance
         for (uint i = 0; i < _anchorPrices.length; ++i) {
             anchorPrices[i] = _anchorPrices[i];
@@ -26,8 +35,8 @@ contract FastUpdater is IIFastUpdater {
         setPrecision(newPrecision1x15);
     }
 
-    function setNextSortitionRound(bool newSeed, uint16 expectedSampleSize8x8) private {
-        uint epochId; // TODO: Get this correctly
+    function setNextSortitionRound(bool newSeed, uint epochId, uint16 expectedSampleSize8x8) private {
+        // uint epochId; // TODO: Get this correctly
         uint cutoff = getScoreCutoff(expectedSampleSize8x8);
         uint seed;
         if (newSeed) { // TODO: this needs to be replaced with a real condition
@@ -35,22 +44,24 @@ contract FastUpdater is IIFastUpdater {
                 delete activeSortitionRounds[i];
             }
             IIFastUpdaters.ProviderRegistry memory registry = fastUpdaters.nextProviderRegistry(epochId);
+
             for (uint i = 0; i < registry.providerAddresses.length; ++i) {
                 activeProviders[registry.providerAddresses[i]] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
+                console.log("weight", activeProviders[registry.providerAddresses[i]].sortitionWeight);
             }
             seed = registry.seed;
         }
         else {
             seed = getPreviousSortitionRound(0).seed + 1;
         }
+
         setNextSortitionRound(SortitionRound(seed, cutoff));
     }
 
     // Called by Flare daemon at the end of each block
-    function finalizeBlock() public override { // only governance
-        bool newSeed;
+    function prepareForNewBlock(bool newSeed, uint epochId) public override { // only governance
         uint16 expectedSampleSize8x8 = setSortitionParameters();
-        setNextSortitionRound(newSeed, expectedSampleSize8x8);
+        setNextSortitionRound(newSeed, epochId, expectedSampleSize8x8);
     }
 
     function submitUpdates(FastUpdates calldata updates) external override {
@@ -78,7 +89,7 @@ contract FastUpdater is IIFastUpdater {
         return activeSortitionRounds[ix(activeSortitionRounds.length - i)];
     }
     function setNextSortitionRound(SortitionRound memory x) private {
-        console.log(ix(1), x.seed, x.scoreCutoff);
+        // console.log(ix(1), x.seed, x.scoreCutoff);
         activeSortitionRounds[ix(1)] = x;
     }
     function setSubmissionWindow(uint w) external override { // only governance
@@ -130,7 +141,7 @@ contract FastUpdater is IIFastUpdater {
                 factor1x15 = mulFixed1x15(factor1x15, power1x15);
             }
 
-            powers <<= 16;
+            powers <<= 16; // what does this do?
             deltaBinary >>= 1;
         }
     }
@@ -146,6 +157,7 @@ contract FastUpdater is IIFastUpdater {
     }
 
     function computePrice(uint32 anchorPrice, int8 totalUnitDelta) private view returns(uint32) {
+        // console.log(uint(deltaFactor(totalUnitDelta)));
         return uint32(uint(anchorPrice) * uint(deltaFactor(totalUnitDelta)) >> 15);
     }
 
@@ -157,6 +169,7 @@ contract FastUpdater is IIFastUpdater {
         int delta,
         uint feed
     ) private {
+        // console.log(feed);
         int8 totalUnitDelta = totalUnitDeltas[feed];
 
         if (totalUnitDelta == type(int8).min || totalUnitDelta == type(int8).max) {
