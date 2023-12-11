@@ -139,13 +139,6 @@ function div(Scale x, Scale y) pure returns (Scale z) {
     z = Scale.wrap(uint16(zWide));
 }
 
-function div(Range x, Range y) pure returns (Range z) {
-    uint24 xWide = uint24(Range.unwrap(x)) << 8;
-    uint24 yWide = uint24(Range.unwrap(y));
-    uint24 zWide = xWide / yWide;
-    z = Range.wrap(uint16(zWide));
-}
-
 function div(Range x, SampleSize y) pure returns (Precision z) {
     uint32 xWide = uint32(Range.unwrap(x)) << 15;
     uint32 yWide = uint32(SampleSize.unwrap(y));

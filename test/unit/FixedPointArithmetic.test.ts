@@ -186,4 +186,95 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
         expect(c[1]).to.equal(x - y);
     });
 
+    // Multiplication/division tests
+
+    it("should multiply and divide Scale values", async () => {
+        const xI = Math.floor(2**15 + (Math.random() * 2**14))
+        const yI = Math.floor(2**15 + (Math.random() * 2**14))
+
+        const x = xI / 2**15;
+        const y = yI / 2**15;
+
+        const xy1 = Math.floor((x * y) * 2**15) / 2**15
+        const xy2 = Math.floor((x / y) * 2**15) / 2**15
+
+        const c = await fpaInstance.mulScaleTest(xI, yI);
+
+        expect(c[0] / 2**15).to.equal(xy1);
+        expect(c[1] / 2**15).to.equal(xy2);
+    });
+    it("should multiply Price and Scale values", async () => {
+        const x = Math.floor(Math.random() * 2**31);
+        const yI = Math.floor(2**15 + Math.random() * 2**15);
+        const y = yI / 2**15;
+
+        const c = await fpaInstance.mulPriceScaleTest(x, yI);
+
+        expect(c).to.equal(Math.floor(x * y));
+    });
+    it("should multiply Fee and Range values", async () => {
+        const x = Math.floor(Math.random() * 2**32);
+        const yI = Math.floor(Math.random() * 2**16)
+        const y = yI / 2**8;
+
+        const c = await fpaInstance.mulFeeRangeTest(x, yI);
+
+        expect(c).to.equal(Math.floor(x * y));
+    })
+    it("should multiply Fractional and Fee values", async () => {
+        const xI = Math.floor(Math.random() * 2**16)
+        const x = xI / 2**16;
+        const y = Math.floor(Math.random() * 2**32);
+
+        const c = await fpaInstance.mulFractionalFeeTest(xI, y);
+
+        expect(c).to.equal(Math.floor(x * y));
+    })
+    it("should multiply Fractional and SampleSize values", async () => {
+        const xI = Math.floor(Math.random() * 2**16)
+        const x = xI / 2**16;
+        const yI = Math.floor(Math.random() * 2**16);
+        const y = yI / 2**8;
+
+        const xy = Math.floor(x * y * 2**8) / 2**8
+
+        const c = await fpaInstance.mulFractionalSampleSizeTest(xI, yI);
+
+        expect(c / 2**8).to.equal(xy);
+    })
+    it("should divide Range values", async () => {
+        const yI = Math.floor(Math.random() * 2**16)
+        const y = yI / 2**8;
+        const xI = Math.floor(Math.random() * yI);
+        const x = xI / 2**8;
+
+        const xy = Math.floor((x / y) * 2**16) / 2**16
+
+        const c = await fpaInstance.divRangeTest(xI, yI);
+
+        expect(c / 2**16).to.equal(xy);
+    })
+    it("should divide Fee values", async () => {
+        const y = Math.floor(Math.random() * 2**32)
+        const x = Math.floor(Math.random() * y);
+
+        const xy = Math.floor((x / y) * 2**16) / 2**16
+
+        const c = await fpaInstance.divFeeTest(x, y);
+
+        expect(c / 2**16).to.equal(xy);
+    })
+    it("should divide Range and SampleSize values", async () => {
+        const yI = Math.floor(Math.random() * 2**16)
+        const y = yI / 2**8;
+        const xI = Math.floor(Math.random() * y);
+        const x = xI / 2**8;
+
+        const xy = Math.floor((x / y) * 2**15) / 2**15
+
+        const c = await fpaInstance.divRangeSampleSizeTest(xI, yI);
+
+        expect(c / 2**15).to.equal(xy);
+    })
+
 });

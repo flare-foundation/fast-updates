@@ -69,4 +69,31 @@ contract TestFixedPointArithmetic {
         z2 = FPA.sub(x, y);
     }
 
+    // Multiplication/division tests
+
+    function mulScaleTest(FPA.Scale x, FPA.Scale y) public pure returns (FPA.Scale z1, FPA.Scale z2) {
+        z1 = FPA.mul(x, y);
+        z2 = FPA.div(x, y);
+    }
+    function mulPriceScaleTest(FPA.Price x, FPA.Scale y) public pure returns (FPA.Price z) {
+        z = FPA.mul(x, y);
+    }
+    function mulFeeRangeTest(FPA.Fee x, FPA.Range y) public pure returns (FPA.Fee z) {
+        z = FPA.mul(x, y);
+    }
+    function mulFractionalFeeTest(FPA.Fractional x, FPA.Fee y) public pure returns (FPA.Fee z) {
+        z = FPA.mul(x, y);
+    }
+    function mulFractionalSampleSizeTest(FPA.Fractional x, FPA.SampleSize y) public pure returns (FPA.SampleSize z) {
+        z = FPA.mul(x, y);
+    }
+    function divRangeTest(FPA.Range x, FPA.Range y) public pure returns (FPA.Fractional z) {
+        z = FPA.frac(x, y);
+    }
+    function divFeeTest(FPA.Fee x, FPA.Fee y) public pure returns (FPA.Fractional z) {
+        z = FPA.frac(x, y);
+    }
+    function divRangeSampleSizeTest(FPA.Range x, FPA.SampleSize y) public pure returns (FPA.Precision z) {
+        z = FPA.div(x, y);
+    }
 }
