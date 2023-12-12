@@ -7,37 +7,49 @@ import { Deltas } from "../lib/Deltas.sol";
 import { SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
+import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
 import "hardhat/console.sol";
 
 
+// TODO: governance functions to change the anchor prices, e.g. at the time of deployment of this contract
 contract FastUpdater is IIFastUpdater {
+    // Circular list
     SortitionRound[] private activeSortitionRounds;
+    // An FTSO v2 price is 32-bit, as per the ftso-scaling repo
+    FPA.Price[1000] private anchorPrices;
+    // We accumulate -128..127 unit deltas before recomputing the anchor price
+    FPA.Delta[1000] private totalUnitDeltas;
+    // scalePowers[i] = 1 + (0x15 bit precision) = scale ** (2 ** i)
+    FPA.Scale[8] private scalePowers; // Must call setScale before this is used!
 
     function getSortitionRound(uint blockNum) public view returns (uint seed, uint cutoff) {
-        // console.log("get", ix(activeSortitionRounds.length - i));
-        // assert(i < activeSortitionRounds.length);
         SortitionRound memory sortitionRound = activeSortitionRounds[blockNum % activeSortitionRounds.length];
         seed = sortitionRound.seed;
         cutoff = sortitionRound.scoreCutoff;
-        // blockNum = block.number;
     }
 
-    function setAnchorPrices(uint32[] calldata _anchorPrices) public { // only governance
+    function setAnchorPrices(FPA.Price[] calldata _anchorPrices) public { // only governance
         for (uint i = 0; i < _anchorPrices.length; ++i) {
             anchorPrices[i] = _anchorPrices[i];
         }
     }
 
-    function setSortitionParameters() private returns(uint16 expectedSampleSize8x8) {
-        uint16 newPrecision1x15;
-        (expectedSampleSize8x8, newPrecision1x15) = fastUpdateIncentiveManager.nextSortitionParameters();
-        setPrecision(newPrecision1x15);
+    function setFirstSortitionParameters() private returns(FPA.SampleSize newSampleSize) {
+        FPA.Scale newScale;
+        (newSampleSize, newScale) = fastUpdateIncentiveManager.firstParameters();
+        setScale(newScale);
     }
 
-    function setNextSortitionRound(bool newSeed, uint epochId, uint16 expectedSampleSize8x8) private {
+    function setSortitionParameters() private returns(FPA.SampleSize newSampleSize) {
+        FPA.Scale newScale;
+        (newSampleSize, newScale) = fastUpdateIncentiveManager.nextUpdateParameters();
+        setScale(newScale);
+    }
+
+    function setNextSortitionRound(bool newSeed, uint epochId, FPA.SampleSize newSampleSize) private {
         // uint epochId; // TODO: Get this correctly
-        uint cutoff = getScoreCutoff(expectedSampleSize8x8);
+        uint cutoff = getScoreCutoff(newSampleSize);
         uint seed;
         if (newSeed) { // TODO: this needs to be replaced with a real condition
             for (uint i = 0; i < activeProviderAddresses.length; ++i) {
@@ -47,7 +59,6 @@ contract FastUpdater is IIFastUpdater {
 
             for (uint i = 0; i < registry.providerAddresses.length; ++i) {
                 activeProviders[registry.providerAddresses[i]] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
-                console.log("weight", activeProviders[registry.providerAddresses[i]].sortitionWeight);
             }
             seed = registry.seed;
         }
@@ -58,10 +69,16 @@ contract FastUpdater is IIFastUpdater {
         setNextSortitionRound(SortitionRound(seed, cutoff));
     }
 
+    // Called by Flare daemon at the beginning
+    function prepareFirstBlock(bool newSeed, uint epochId) public override { // only governance
+        FPA.SampleSize newSampleSize = setFirstSortitionParameters();
+        setNextSortitionRound(newSeed, epochId, newSampleSize);
+    }
+
     // Called by Flare daemon at the end of each block
-    function prepareForNewBlock(bool newSeed, uint epochId) public override { // only governance
-        uint16 expectedSampleSize8x8 = setSortitionParameters();
-        setNextSortitionRound(newSeed, epochId, expectedSampleSize8x8);
+    function finalizeBlock(bool newSeed, uint epochId) public override { // only governance
+        FPA.SampleSize newSampleSize = setSortitionParameters();
+        setNextSortitionRound(newSeed, epochId, newSampleSize);
     }
 
     function submitUpdates(FastUpdates calldata updates) external override {
@@ -73,12 +90,12 @@ contract FastUpdater is IIFastUpdater {
         applyUpdates(updates.deltas);
     }
 
-    function getScoreCutoff(uint16 expectedSampleSize8x8) private pure returns (uint) {
+    function getScoreCutoff(FPA.SampleSize expectedSampleSize) private pure returns (uint) {
         // The formula is: (exp. s.size)/(num. prov.) = (score)/(score range)
         //   score range = 2**256
         //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
         //   exp. s.size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
-        return uint(expectedSampleSize8x8) << (256 - VIRTUAL_PROVIDER_BITS - 8);
+        return uint(FPA.SampleSize.unwrap(expectedSampleSize)) << (256 - VIRTUAL_PROVIDER_BITS - 8);
     }
 
     function ix(uint i) private view returns (uint) {
@@ -89,7 +106,6 @@ contract FastUpdater is IIFastUpdater {
         return activeSortitionRounds[ix(activeSortitionRounds.length - i)];
     }
     function setNextSortitionRound(SortitionRound memory x) private {
-        // console.log(ix(1), x.seed, x.scoreCutoff);
         activeSortitionRounds[ix(1)] = x;
     }
     function setSubmissionWindow(uint w) external override { // only governance
@@ -99,66 +115,26 @@ contract FastUpdater is IIFastUpdater {
         }
     }
 
-    uint32[1000] private anchorPrices;
-    int8[1000] private totalUnitDeltas;
-
-    // stand-in for uint16[8]; precisionPowers[i] = 1 + (0x15 bit fraction) = precision1x15 ** (2 ** i)
-    bytes16 private precisionPowers; // Must call setPrecision before this is used!
-
-    function padRight16(uint16 x) private pure returns(bytes16) {
-        return bytes16(bytes2(x));
-    }
-
-    function mulFixed1x15(uint16 x, uint16 y) private pure returns(uint16) {
-        return uint16((uint32(x) * uint32(y)) >> 15);
-    }
-
-    function setPrecision(uint16 scale1x15) private {
+    function setScale(FPA.Scale x) private {
         // Unavoidably expensive: when the precision changes the meaning of totalUnitDeltas also changes
         for (uint feed = 0; feed < 1000; ++feed) {
             weighAnchorPrice(feed);
         }
 
-        bytes16 powers = padRight16(scale1x15);
-        for (uint i = 1; i < 7; ++i) {
-            scale1x15 = mulFixed1x15(scale1x15, scale1x15);
-            powers |= padRight16(scale1x15) >> (16 * i);
-        }
-        precisionPowers = powers;
-    }
-
-    function deltaFactor(int8 totalUnitDelta) private view returns (uint16 factor1x15) {
-        bytes16 powers = precisionPowers;
-        bytes1 deltaBinary = bytes1(uint8(totalUnitDelta));
-        factor1x15 = uint16(bytes2(hex"80_00")); // error here?
-
-        bytes1 deltaBitMask = hex"01";
-        bytes16 powerMask = hex"ff_00_00_00_00_00_00_00";
-
-        while (deltaBinary != bytes1(0)) {
-            if (deltaBinary & deltaBitMask != 0) {
-                uint16 power1x15 = uint16(bytes2(precisionPowers & powerMask));
-                factor1x15 = mulFixed1x15(factor1x15, power1x15);
-            }
-
-            powers <<= 16; // what does this do?
-            deltaBinary >>= 1;
-        }
+        FPA.powersInto(x, scalePowers);
     }
 
     function fetchCurrentPrices(
         uint[] calldata feeds
-    ) external view override returns(uint[] memory prices) {
-        prices = new uint[](feeds.length);
+    ) external view override returns(FPA.Price[] memory prices) {
+        prices = new FPA.Price[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
-            uint feed = feeds[i];
-            prices[i] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
+            prices[i] = computePrice(feeds[i]);
         }
     }
 
-    function computePrice(uint32 anchorPrice, int8 totalUnitDelta) private view returns(uint32) {
-        // console.log(uint(deltaFactor(totalUnitDelta)));
-        return uint32(uint(anchorPrice) * uint(deltaFactor(totalUnitDelta)) >> 15);
+    function computePrice(uint feed) private view returns(FPA.Price) {
+        return FPA.mul(anchorPrices[feed], FPA.pow(scalePowers, totalUnitDeltas[feed]));
     }
 
     function applyUpdates(Deltas calldata deltas) private {
@@ -166,26 +142,25 @@ contract FastUpdater is IIFastUpdater {
     }
 
     function applyDelta(
-        int delta,
+        FPA.Delta delta,
         uint feed
     ) private {
-        // console.log(feed);
-        int8 totalUnitDelta = totalUnitDeltas[feed];
+        FPA.Delta totalUnitDelta = totalUnitDeltas[feed];
 
-        if (totalUnitDelta == type(int8).min || totalUnitDelta == type(int8).max) {
-            weighAnchorPrice(feed, int8(delta));
+        if (FPA.minDelta(totalUnitDelta) || FPA.maxDelta(totalUnitDelta)) {
+            weighAnchorPrice(feed, delta);
         }
         else {
-            totalUnitDeltas[feed] = int8(totalUnitDelta + delta);
+            totalUnitDeltas[feed] = FPA.add(totalUnitDelta, delta);
         }
     }
 
-    function weighAnchorPrice(uint feed, int8 extraDelta) private {
-        anchorPrices[feed] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
+    function weighAnchorPrice(uint feed, FPA.Delta extraDelta) private {
+        anchorPrices[feed] = computePrice(feed);
         totalUnitDeltas[feed] = extraDelta;
     }
 
     function weighAnchorPrice(uint feed) private {
-        weighAnchorPrice(feed, 0);
+        weighAnchorPrice(feed, FPA.zeroD);
     }
 }

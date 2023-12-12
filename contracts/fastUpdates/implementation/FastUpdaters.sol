@@ -19,7 +19,7 @@ contract FastUpdaters is IIFastUpdaters {
 
     uint baseSeed;
 
-    function getBaseSeed() public returns (uint) {
+    function getBaseSeed() public view returns (uint) {
         return baseSeed;
     }
 

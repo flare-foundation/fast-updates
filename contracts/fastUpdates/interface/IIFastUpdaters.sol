@@ -8,7 +8,7 @@ import "../lib/Bn256.sol";
 abstract contract IIFastUpdaters is IFastUpdaters {
     IVoterRegistry voterRegistry;
 
-    function setVoterRegistry(IVoterRegistry newVoterRegistry) external {
+    function setVoterRegistry(IVoterRegistry newVoterRegistry) external { // only governance
         voterRegistry = newVoterRegistry;
     }
 

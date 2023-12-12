@@ -1,6 +1,4 @@
 import BN from "bn.js";
-import chai, { expect } from "chai";
-import chaiBN from "chai-bn";
 import {
     FastUpdatersInstance,
     FastUpdaterInstance,
@@ -9,14 +7,9 @@ import {
 } from "../typechain-truffle";
 import { getTestFile } from "../test-utils/utils/constants";
 import { KeyGen, VerifiableRandomness, SortitionKey, Proof } from "../src/Sortition";
-import { RandInt } from "../src/utils/rand";
-import { bn254 } from "@noble/curves/bn254";
 import { toBN } from "../src/protocol/utils/voting-utils";
 import { loadAccounts } from "../deployment/tasks/common";
 import { Account } from "web3-core";
-import { int } from "hardhat/internal/core/params/argumentTypes";
-// import { getBlockNumber } from "../src/providers/TruffleProvider";
-// import { getBlockNumber } from "../src/TruffleProvider";
 
 const FastUpdaters = artifacts.require("FastUpdaters");
 const FastUpdater = artifacts.require("FastUpdater");
@@ -24,7 +17,7 @@ const FastUpdateIncentiveManager = artifacts.require("FastUpdateIncentiveManager
 const VoterRegistry = artifacts.require("VoterRegistry");
 
 const NUM_ACCOUNTS = 10;
-const ANCHOR_PRICES = [10, 100, 1000, 10000, 100000, 1000000];
+const ANCHOR_PRICES = [100, 1000, 10000, 100000, 1000000, 10000000];
 const NUM_FEEDS = ANCHOR_PRICES.length;
 const TEST_EPOCH = 1;
 const VOTER_WEIGHT = 1000;
@@ -37,13 +30,14 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
     let accounts: Account[];
     let credentials: (bigint | bigint[])[][];
     let keys: SortitionKey[];
+    const weights: number[] = Array();
     before(async () => {
         accounts = loadAccounts(web3);
-        // const governance = accounts[0];
+        const governance = accounts[0];
         fastUpdaters = await FastUpdaters.new();
         fastUpdater = await FastUpdater.new();
-        fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new();
-        fastUpdateIncentiveManager.setBase(100, 100, 100, [1], [1]);
+        fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new(governance.address, 100, 1, 1, 1);
+        // fastUpdateIncentiveManager.setBase(100, 100, 100, [1], [1]);
 
         voterRegistry = await VoterRegistry.new();
         await fastUpdaters.setVoterRegistry(voterRegistry.address);
@@ -59,25 +53,12 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
             keys[i] = key;
             const replicate = BigInt(0); // Registration doesn't allow cherry-picking a replicate
             const proof: Proof = VerifiableRandomness(key, seed, replicate);
-            // proofs[i] = proof;
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
             const newProvider = [pubKey, sortitionCredential];
             credentials[i] = sortitionCredential;
             await fastUpdaters.registerNewProvider(newProvider, { from: accounts[i + 1].address });
         }
-
-        // const nextData = await fastUpdaters.nextProviderRegistry.call(TEST_EPOCH);
-        // for (let i = 0; i < NUM_ACCOUNTS; i++) {
-        //     const providerAddress = nextData[1][i];
-        //     expect(providerAddress).to.equal(accounts[i + 1].address);
-        //     const providerKey = nextData[2][i];
-        //     expect(providerKey[0]).to.equal(keys[i].pk.x);
-        //     expect(providerKey[1]).to.equal(keys[i].pk.y);
-        //     const providerWeight = parseInt(nextData[3][i]);
-        //     const expectedWeight = Math.floor((VOTER_WEIGHT << 12) / (VOTER_WEIGHT * NUM_ACCOUNTS));
-        //     expect(providerWeight).to.equal(expectedWeight);
-        // }
     });
 
     it("should submit updates", async () => {
@@ -85,59 +66,100 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         await fastUpdater.setFastUpdateIncentiveManager(fastUpdateIncentiveManager.address);
         await fastUpdater.setSubmissionWindow(10);
 
-        // const extendedAnchorPrices: number[] = Array();
-        // for (let i = ANCHOR_PRICES.length; i < 1000; i++) {
-        //     extendedAnchorPrices.push(i);
-        // }
-        // const anchorPrices = ANCHOR_PRICES.concat(extendedAnchorPrices);
         await fastUpdater.setAnchorPrices(ANCHOR_PRICES);
 
-        await fastUpdater.prepareForNewBlock(true, TEST_EPOCH);
-        const submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+        await fastUpdater.prepareFirstBlock(true, TEST_EPOCH);
+        let submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+
+        for (let i = 0; i < NUM_ACCOUNTS; i++) {
+            const provider = await fastUpdater.activeProviders.call(accounts[i + 1].address);
+            weights[i] = Number(provider[1].toString());
+        }
 
         const feeds: number[] = new Array();
         for (let i = 0; i < NUM_FEEDS; i++) {
             feeds.push(i);
         }
-        const startingPrices: BN[] = await fastUpdater.fetchCurrentPrices(feeds);
+        const startingPricesBN: BN[] = await fastUpdater.fetchCurrentPrices(feeds);
+        const startingPrices: bigint[] = new Array();
         console.log("Starting prices");
         for (let i = 0; i < NUM_FEEDS; i++) {
-            console.log(BigInt(startingPrices[i].toString()));
+            startingPrices[i] = BigInt(startingPricesBN[i].toString());
+            console.log(BigInt(startingPrices[i]));
         }
+        let breakVar = false;
+        while (!breakVar) {
+            const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
 
-        const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
-        // console.log("sortition round", sortitionRound[0].toString(), sortitionRound[1].toString());
+            for (let i = 0; i < NUM_ACCOUNTS; i++) {
+                for (let rep = 0; rep < weights[i]; rep++) {
+                    const replicate = BigInt(rep);
+                    const proof: Proof = VerifiableRandomness(keys[i], sortitionRound.seed, replicate);
+                    const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
-        // struct FastUpdates {
-        //     uint sortitionBlock;
-        //     SortitionCredential sortitionCredential;
-        //     Deltas deltas;
-        // }
-        // console.log(credentials[0]);
-        for (let i = 0; i < NUM_ACCOUNTS; i++) {
-            for (let rep = 0; rep < 409; rep++) {
-                const replicate = BigInt(rep);
-                const proof: Proof = VerifiableRandomness(keys[i], sortitionRound.seed, replicate);
-                const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
+                    if (proof.gamma.x < sortitionRound.cutoff) {
+                        console.log("submitting +-0-0+ client", i, "with rep ", rep);
+                        const delta1 = "0x7310000000000000000000000000000000000000000000000000000000000000";
+                        const delta2 = "0x0000000000000000000000000000000000000000000000000000";
+                        const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
+                        const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas];
 
-                if (proof.gamma.x < sortitionRound.cutoff) {
-                    console.log("success", i, proof.gamma.x, sortitionRound.cutoff.toString());
-                    const delta1 = "0x4330000000000000000000000000000000000000000000000000000000000000";
-                    const delta2 = "0x0000000000000000000000000000000000000000000000000000";
-                    const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
-                    const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas];
-                    // console.log(newFastUpdate);
-
-                    await fastUpdater.submitUpdates(newFastUpdate, { from: accounts[i + 1].address });
-                } else {
-                    // console.log("fail", i, proof.gamma.x, sortitionRound.cutoff.toString());
+                        await fastUpdater.submitUpdates(newFastUpdate, { from: accounts[i + 1].address });
+                        breakVar = true;
+                        break;
+                    }
                 }
+                if (breakVar) break;
             }
+            await fastUpdater.finalizeBlock(true, TEST_EPOCH);
+            submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+            // console.log(submissionBlockNum);
         }
-        const endPrices: BN[] = await fastUpdater.fetchCurrentPrices(feeds);
+        let pricesBN: BN[] = await fastUpdater.fetchCurrentPrices(feeds);
+        const prices: bigint[] = new Array();
+        console.log("Middle prices");
+        for (let i = 0; i < NUM_FEEDS; i++) {
+            prices[i] = BigInt(pricesBN[i].toString());
+            console.log(BigInt(prices[i]));
+        }
+        breakVar = false;
+        while (!breakVar) {
+            const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
+
+            for (let i = 0; i < NUM_ACCOUNTS; i++) {
+                for (let rep = 0; rep < weights[i]; rep++) {
+                    const replicate = BigInt(rep);
+                    const proof: Proof = VerifiableRandomness(keys[i], sortitionRound.seed, replicate);
+                    const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
+
+                    if (proof.gamma.x < sortitionRound.cutoff) {
+                        console.log("submitting -+0+0- client", i, "with rep ", rep);
+                        const delta1 = "0xd130000000000000000000000000000000000000000000000000000000000000";
+                        const delta2 = "0x0000000000000000000000000000000000000000000000000000";
+                        const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
+                        const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas];
+
+                        await fastUpdater.submitUpdates(newFastUpdate, { from: accounts[i + 1].address });
+                        breakVar = true;
+                        break;
+                    }
+                }
+                if (breakVar) break;
+            }
+            await fastUpdater.finalizeBlock(true, TEST_EPOCH);
+            submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+            // console.log(submissionBlockNum);
+        }
+
+        pricesBN = await fastUpdater.fetchCurrentPrices(feeds);
         console.log("End prices");
         for (let i = 0; i < NUM_FEEDS; i++) {
-            console.log(BigInt(endPrices[i].toString()));
+            prices[i] = BigInt(pricesBN[i].toString());
+            console.log(BigInt(prices[i]));
+        }
+        for (let i = 0; i < NUM_FEEDS; i++) {
+            expect(Number(prices[i])).to.be.greaterThanOrEqual(Number(startingPrices[i]) * 0.99);
+            expect(Number(prices[i])).to.be.lessThanOrEqual(Number(startingPrices[i]) * 1.01);
         }
     });
 });
