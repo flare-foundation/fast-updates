@@ -9,6 +9,14 @@ pragma experimental ABIEncoderV2;
 import "../lib/FixedPointArithmetic.sol" as FPA;
 
 contract TestFixedPointArithmetic {
+    // Bit length tests
+
+    function maxDeltaTest(FPA.Delta x) public pure returns (bool) {
+        return FPA.maxDelta(x);
+    }
+    function minDeltaTest(FPA.Delta x) public pure returns (bool) {
+        return FPA.minDelta(x);
+    }    
     function identityScaleTest(FPA.Scale x) public pure returns (FPA.Scale y) {
         y = x;
     }
@@ -95,5 +103,20 @@ contract TestFixedPointArithmetic {
     }
     function divRangeSampleSizeTest(FPA.Range x, FPA.SampleSize y) public pure returns (FPA.Precision z) {
         z = FPA.div(x, y);
+    }
+
+    // Comparison and conversion tests
+    
+    function scaleWithPrecisionTest(FPA.Precision x) public pure returns (FPA.Scale y) {
+        y = FPA.scaleWithPrecision(x);
+    }
+    function lessThanRangeTest(FPA.Range x, FPA.Range y) public pure returns (bool) {
+        return FPA.lessThan(x, y);
+    }
+    function lessThanFeeTest(FPA.Fee x, FPA.Fee y) public pure returns (bool) {
+        return FPA.lessThan(x, y);
+    }
+    function lessThanRangeSampleSizeTest(FPA.Range x, FPA.SampleSize y) public pure returns (bool) {
+        return FPA.lessThan(x, y);
     }
 }

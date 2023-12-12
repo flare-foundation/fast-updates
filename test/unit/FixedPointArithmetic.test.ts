@@ -63,15 +63,25 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
         expect(c2).to.eventually.throw();
     });
     it("should have signed 8 bit Delta values", async() => {
-        const x = RandInt(BigInt(2) ** BigInt(7) - BigInt(1));
+        const maxD = 2n**7n - 1n;
+        const minD = -(2n**7n);
+
+        const cMax = await fpaInstance.maxDeltaTest(maxD);
+        const cMin = await fpaInstance.minDeltaTest(minD);
+
+        expect(cMax).to.be.true;
+        expect(cMin).to.be.true;
+
+        const x = RandInt(maxD);
+
         const c1 = await fpaInstance.identityDeltaTest(x);
         const c2 = await fpaInstance.identityDeltaTest(-x);
 
         expect(x).to.equal(c1);
         expect(-x).to.equal(c2);
 
-        const c3 = fpaInstance.identityDeltaTest(BigInt(2) ** BigInt(7));
-        const c4 = fpaInstance.identityDeltaTest(-(BigInt(2) ** BigInt(7) + BigInt(1)));
+        const c3 = fpaInstance.identityDeltaTest(maxD + 1n);
+        const c4 = fpaInstance.identityDeltaTest(minD - 1n);
 
         expect(c3).to.eventually.throw();
         expect(c4).to.eventually.throw();
@@ -277,4 +287,42 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
         expect(c / 2**15).to.equal(xy);
     })
 
+    // Comparison and conversion tests
+
+    it("should convert Precision to Scale", async () => {
+        const xI = Math.floor(Math.random() * 2**15)
+        const x = xI / 2**15
+
+        const c = await fpaInstance.scaleWithPrecisionTest(xI);
+
+        expect(c / 2**15).to.equal(x + 1);
+    })
+    it("should compare Range values", async () => {
+        const xI = Math.floor(Math.random() * 2**16)
+        const x = xI / 2**8
+        const yI = Math.floor(Math.random() * 2**16)
+        const y = yI / 2**8
+
+        const c = await fpaInstance.lessThanRangeTest(xI, yI)
+
+        expect(c).to.equal(x < y)
+    })
+    it("should compare Fee values", async () => {
+        const x = Math.floor(Math.random() * 2**32)
+        const y = Math.floor(Math.random() * 2**32)
+
+        const c = await fpaInstance.lessThanFeeTest(x, y)
+
+        expect(c).to.equal(x < y)
+    })
+    it("should compare Range and SampleSize values", async () => {
+        const xI = Math.floor(Math.random() * 2**16)
+        const x = xI / 2**8
+        const yI = Math.floor(Math.random() * 2**16)
+        const y = yI / 2**8
+
+        const c = await fpaInstance.lessThanRangeSampleSizeTest(xI, yI)
+
+        expect(c).to.equal(x < y)
+    })
 });
