@@ -5,19 +5,13 @@ type Scale is uint16; // 1x15, gives price granularity of 5-6 decimal places, mo
 type Precision is uint16; // 0x15; the fractional part of Scale
 type SampleSize is uint16; // 8x8
 type Range is uint16; // 8x8
-type Price is uint32; // 32x0
-type Delta is int8; // 7x0 signed
+type Price is uint32; // 32x0 // An FTSO v2 price is 32-bit, as per the ftso-scaling repo
 type Fractional is uint16; // 0x16
 type Fee is uint240; // Same scale as currency units, with restricted bit length
 
 Scale constant one = Scale.wrap(1 << 15); // 1.0000 0000 0000 000 binary
-Delta constant zeroD = Delta.wrap(0);
 SampleSize constant zeroS = SampleSize.wrap(0);
 Range constant zeroR = Range.wrap(0);
-
-function add(Delta x, Delta y) pure returns (Delta z) {
-    z = Delta.wrap(Delta.unwrap(x) + Delta.unwrap(y));
-}
 
 function add(SampleSize x, SampleSize y) pure returns (SampleSize z) {
     z = SampleSize.wrap(SampleSize.unwrap(x) + SampleSize.unwrap(y));
@@ -65,14 +59,6 @@ function sum(Fee[] storage list) view returns (Fee z) {
 
 function scaleWithPrecision(Precision p) pure returns (Scale s) {
     return Scale.wrap(Scale.unwrap(one) + Precision.unwrap(p));
-}
-
-function maxDelta(Delta x) pure returns (bool) {
-    return Delta.unwrap(x) == type(int8).max;
-}
-
-function minDelta(Delta x) pure returns (bool) {
-    return Delta.unwrap(x) == type(int8).min;
 }
 
 function lessThan(Range x, Range y) pure returns (bool) {
@@ -150,20 +136,9 @@ function div(Range x, SampleSize y) pure returns (Precision z) {
     z = Precision.wrap(uint16(zWide));
 }
 
-function pow(Scale[8] storage binaryPowers, Delta _power) view returns (Scale result) {
-    int8 power = Delta.unwrap(_power); // 2s-complement, big-endian indexing
-    result = one;
-    for(uint i = 0; i < 7; ++i) {
-        if (power & 1 != 0) result = mul(result, binaryPowers[i]);
-        power >>= 1;
-    }
-    if (power & 1 != 0) result = div(result, binaryPowers[7]);
-}
-
-function powersInto(Scale x, Scale[8] storage binaryPowers) {
-    Scale y = binaryPowers[0] = x;
-    for (uint i = 1; i < 8; ++i) {
-        y = mul(y, y);
-        binaryPowers[i] = y;
-    }
+function div(Price x, Scale y) pure returns (Price z) {
+    uint48 xWide = uint48(Price.unwrap(x)) << 15;
+    uint48 yWide = uint48(Scale.unwrap(y));
+    uint48 zWide = xWide / yWide;
+    z = Price.wrap(uint32(zWide));
 }

@@ -14,17 +14,12 @@ import "../lib/Bn256.sol";
 contract FastUpdater is IIFastUpdater {
     // Circular list
     SortitionRound[] private activeSortitionRounds;
-    // An FTSO v2 price is 32-bit, as per the ftso-scaling repo
-    FPA.Price[1000] private anchorPrices;
-    // We accumulate -128..127 unit deltas before recomputing the anchor price
-    FPA.Delta[1000] private totalUnitDeltas;
-    // scalePowers[i] = 1 + (0x15 bit precision) = scale ** (2 ** i)
-    FPA.Scale[8] private scalePowers; // Must call setScale before this is used!
+    FPA.Price[1000] private prices;
+    FPA.Scale private scale;
 
     function setSortitionParameters() private returns(FPA.SampleSize newSampleSize) {
         FPA.Scale newScale;
         (newSampleSize, newScale) = fastUpdateIncentiveManager.nextUpdateParameters();
-        setScale(newScale);
     }
 
     function setNextSortitionRound(bool newSeed, FPA.SampleSize newSampleSize) private {
@@ -49,8 +44,9 @@ contract FastUpdater is IIFastUpdater {
 
     // Called by Flare daemon at the end of each block
     function finalizeBlock() public override { // only governance
+        FPA.SampleSize newSampleSize;
+        (newSampleSize, scale) = fastUpdateIncentiveManager.nextUpdateParameters();
         bool newSeed; // TODO: use a real thing here
-        FPA.SampleSize newSampleSize = setSortitionParameters();
         setNextSortitionRound(newSeed, newSampleSize);
     }
 
@@ -88,26 +84,13 @@ contract FastUpdater is IIFastUpdater {
         }
     }
 
-    function setScale(FPA.Scale x) private {
-        // Unavoidably expensive: when the precision changes the meaning of totalUnitDeltas also changes
-        for (uint feed = 0; feed < 1000; ++feed) {
-            weighAnchorPrice(feed);
-        }
-
-        FPA.powersInto(x, scalePowers);
-    }
-
     function fetchCurrentPrices(
         uint[] calldata feeds
-    ) external view override returns(FPA.Price[] memory prices) {
-        prices = new FPA.Price[](feeds.length);
+    ) external view override returns(FPA.Price[] memory _prices) {
+        _prices = new FPA.Price[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
-            prices[i] = computePrice(feeds[i]);
+            _prices[i] = prices[feeds[i]];
         }
-    }
-
-    function computePrice(uint feed) private view returns(FPA.Price) {
-        return FPA.mul(anchorPrices[feed], FPA.pow(scalePowers, totalUnitDeltas[feed]));
     }
 
     function applyUpdates(Deltas calldata deltas) private {
@@ -115,25 +98,14 @@ contract FastUpdater is IIFastUpdater {
     }
 
     function applyDelta(
-        FPA.Delta delta,
+        int delta,
         uint feed
     ) private {
-        FPA.Delta totalUnitDelta = totalUnitDeltas[feed];
-
-        if (FPA.minDelta(totalUnitDelta) || FPA.maxDelta(totalUnitDelta)) {
-            weighAnchorPrice(feed, delta);
+        if (delta == -1) {
+            prices[feed] = FPA.div(prices[feed], scale);
         }
-        else {
-            totalUnitDeltas[feed] = FPA.add(totalUnitDelta, delta);
+        else if (delta == 1) {
+            prices[feed] = FPA.mul(prices[feed], scale);
         }
-    }
-
-    function weighAnchorPrice(uint feed, FPA.Delta extraDelta) private {
-        anchorPrices[feed] = computePrice(feed);
-        totalUnitDeltas[feed] = extraDelta;
-    }
-
-    function weighAnchorPrice(uint feed) private {
-        weighAnchorPrice(feed, FPA.zeroD);
     }
 }

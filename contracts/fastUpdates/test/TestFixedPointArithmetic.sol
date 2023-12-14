@@ -11,12 +11,6 @@ import "../lib/FixedPointArithmetic.sol" as FPA;
 contract TestFixedPointArithmetic {
     // Bit length tests
 
-    function maxDeltaTest(FPA.Delta x) public pure returns (bool) {
-        return FPA.maxDelta(x);
-    }
-    function minDeltaTest(FPA.Delta x) public pure returns (bool) {
-        return FPA.minDelta(x);
-    }    
     function identityScaleTest(FPA.Scale x) public pure returns (FPA.Scale y) {
         y = x;
     }
@@ -32,9 +26,6 @@ contract TestFixedPointArithmetic {
     function identityPriceTest(FPA.Price x) public pure returns (FPA.Price y) {
         y = x;
     }
-    function identityDeltaTest(FPA.Delta x) public pure returns (FPA.Delta y) {
-        y = x;
-    }
     function identityFractionalTest(FPA.Fractional x) public pure returns (FPA.Fractional y) {
         y = x;
     }
@@ -45,10 +36,6 @@ contract TestFixedPointArithmetic {
     function oneTest(FPA.Scale x) public pure returns(FPA.Scale y1, FPA.Scale y2) {
         y1 = FPA.mul(FPA.one, x);
         y2 = FPA.mul(x, FPA.one);
-    }
-    function zeroDTest(FPA.Delta x) public pure returns(FPA.Delta y1, FPA.Delta y2) {
-        y1 = FPA.add(FPA.zeroD, x);
-        y2 = FPA.add(x, FPA.zeroD);
     }
     function zeroSTest(FPA.SampleSize x) public pure returns(FPA.SampleSize y1, FPA.SampleSize y2) {
         y1 = FPA.add(FPA.zeroS, x);
@@ -61,9 +48,6 @@ contract TestFixedPointArithmetic {
 
     // Addition/subtraction tests
 
-    function addDeltaTest(FPA.Delta x, FPA.Delta y) public pure returns(FPA.Delta z) {
-        z = FPA.add(x, y);
-    }
     function addSampleSizeTest(FPA.SampleSize x, FPA.SampleSize y) public pure returns(FPA.SampleSize z1, FPA.SampleSize z2) {
         z1 = FPA.add(x, y);
         z2 = FPA.sub(x, y);
@@ -102,6 +86,9 @@ contract TestFixedPointArithmetic {
         z = FPA.frac(x, y);
     }
     function divRangeSampleSizeTest(FPA.Range x, FPA.SampleSize y) public pure returns (FPA.Precision z) {
+        z = FPA.div(x, y);
+    }
+    function divPriceScaleTest(FPA.Price x, FPA.Scale y) public pure returns (FPA.Price z) {
         z = FPA.div(x, y);
     }
 

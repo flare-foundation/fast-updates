@@ -62,30 +62,6 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
         const c2 = fpaInstance.identityPriceTest(BigInt(2) ** BigInt(32));
         expect(c2).to.eventually.throw();
     });
-    it("should have signed 8 bit Delta values", async() => {
-        const maxD = 2n**7n - 1n;
-        const minD = -(2n**7n);
-
-        const cMax = await fpaInstance.maxDeltaTest(maxD);
-        const cMin = await fpaInstance.minDeltaTest(minD);
-
-        expect(cMax).to.be.true;
-        expect(cMin).to.be.true;
-
-        const x = RandInt(maxD);
-
-        const c1 = await fpaInstance.identityDeltaTest(x);
-        const c2 = await fpaInstance.identityDeltaTest(-x);
-
-        expect(x).to.equal(c1);
-        expect(-x).to.equal(c2);
-
-        const c3 = fpaInstance.identityDeltaTest(maxD + 1n);
-        const c4 = fpaInstance.identityDeltaTest(minD - 1n);
-
-        expect(c3).to.eventually.throw();
-        expect(c4).to.eventually.throw();
-    });
     it("should have 16 bit Fractional values", async() => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c1 = await fpaInstance.identityFractionalTest(x);
@@ -114,16 +90,9 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
         expect(c[0]).to.equal(x);
         expect(c[1]).to.equal(x);
     });
-    it("should have zeroD as additive zero", async () => {
-        const x = RandInt(BigInt(2) ** BigInt(8) - BigInt(1));
-        const c = await fpaInstance.zeroRTest(x);
-
-        expect(c[0]).to.equal(x);
-        expect(c[1]).to.equal(x);
-    });
     it("should have zeroS as additive zero", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
-        const c = await fpaInstance.zeroRTest(x);
+        const c = await fpaInstance.zeroSTest(x);
 
         expect(c[0]).to.equal(x);
         expect(c[1]).to.equal(x);
@@ -138,19 +107,6 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
 
     // Addition/subtraction tests
 
-    it("should add and subtract Delta values", async () => {
-        const x = RandInt(BigInt(2) ** BigInt(7) - BigInt(1));
-        const y = RandInt(BigInt(2) ** BigInt(7) - BigInt(1) - x);
-
-        const c1 = await fpaInstance.addDeltaTest(x, y);
-        const c2 = await fpaInstance.addDeltaTest(-x, -y);
-        const c3 = await fpaInstance.addDeltaTest(x, -y);
-
-        expect(c1).to.equal(x + y);
-        expect(c2).to.equal(-x + (-y));
-        expect(c3).to.equal(x + (-y));
-    });
-    
     it("should add and subtract SampleSize values", async () => {
         var x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         var y = RandInt(BigInt(2) ** BigInt(16) - BigInt(1) - x);
@@ -285,6 +241,15 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
         const c = await fpaInstance.divRangeSampleSizeTest(xI, yI);
 
         expect(c / 2**15).to.equal(xy);
+    })
+    it("should divide Price and Scale values", async () => {
+        const x = Math.floor(Math.random() * 2**32);
+        const yI = Math.floor(2**15 + Math.random() * 2**15);
+        const y = yI / 2**15;
+
+        const c = await fpaInstance.divPriceScaleTest(x, yI);
+
+        expect(c).to.equal(Math.floor(x/y));
     })
 
     // Comparison and conversion tests
