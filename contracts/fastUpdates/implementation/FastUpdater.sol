@@ -17,11 +17,6 @@ contract FastUpdater is IIFastUpdater {
     FPA.Price[1000] private prices;
     FPA.Scale private scale;
 
-    function setSortitionParameters() private returns(FPA.SampleSize newSampleSize) {
-        FPA.Scale newScale;
-        (newSampleSize, newScale) = fastUpdateIncentiveManager.nextUpdateParameters();
-    }
-
     function setNextSortitionRound(bool newSeed, FPA.SampleSize newSampleSize) private {
         uint epochId; // TODO: Get this correctly
         uint cutoff = getScoreCutoff(newSampleSize);
