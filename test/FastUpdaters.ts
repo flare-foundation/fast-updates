@@ -1,11 +1,7 @@
-import BN from "bn.js";
-import chai, { expect } from "chai";
-import chaiBN from "chai-bn";
+import { expect } from "chai";
 import { FastUpdatersInstance, VoterRegistryInstance } from "../typechain-truffle";
 import { getTestFile } from "../test-utils/utils/constants";
 import { KeyGen, VerifiableRandomness, SortitionKey, Proof } from "../src/Sortition";
-import { RandInt } from "../src/utils/rand";
-import { bn254 } from "@noble/curves/bn254";
 import { toBN } from "../src/protocol/utils/voting-utils";
 import { loadAccounts } from "../deployment/tasks/common";
 import { Account } from "web3-core";

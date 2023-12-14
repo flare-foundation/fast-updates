@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { FastUpdater } from "./FastUpdater.sol";
 import "../lib/CircularList.sol" as CL;
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
@@ -112,7 +111,7 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
 
     function sampleSizeIncrease(FPA.Fee dc, FPA.Range dr) private returns(FPA.SampleSize de) {
         FPA.Fee rangeCost = FPA.mul(rangeIncreasePrice, dr);
-        require(!FPA.lessThan(rangeCost, dc), "Insufficient contribution to pay for range increase");
+        require(!FPA.lessThan(dc, rangeCost), "Insufficient contribution to pay for range increase");
         FPA.Fee dx = FPA.sub(dc, rangeCost);
         incrementExcessOffer(dx);
         de = FPA.mul(FPA.frac(dx, excessOfferValue), sampleIncreaseLimit);

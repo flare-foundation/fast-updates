@@ -90,7 +90,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         let breakVar = false;
         while (!breakVar) {
             const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
-
+            console.log(submissionBlockNum, sortitionRound.seed.toString());
             for (let i = 0; i < NUM_ACCOUNTS; i++) {
                 for (let rep = 0; rep < weights[i]; rep++) {
                     const replicate = BigInt(rep);
@@ -125,6 +125,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         breakVar = false;
         while (!breakVar) {
             const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
+            console.log(submissionBlockNum, sortitionRound.seed.toString());
 
             for (let i = 0; i < NUM_ACCOUNTS; i++) {
                 for (let rep = 0; rep < weights[i]; rep++) {
