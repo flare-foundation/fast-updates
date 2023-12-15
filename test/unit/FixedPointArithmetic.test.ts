@@ -155,8 +155,9 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
     // Multiplication/division tests
 
     it("should multiply and divide Scale values", async () => {
-        const xI = Math.floor(2**15 + (Math.random() * 2**14))
-        const yI = Math.floor(2**15 + (Math.random() * 2**14))
+        // Power is 13 here to prevent the product from overflowing
+        const xI = Math.floor(2**15 + (Math.random() * 2**13))
+        const yI = Math.floor(2**15 + (Math.random() * 2**13))
 
         const x = xI / 2**15;
         const y = yI / 2**15;

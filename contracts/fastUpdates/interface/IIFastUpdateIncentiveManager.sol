@@ -13,24 +13,35 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager {
     FPA.SampleSize internal sampleIncreaseLimit;
     FPA.Fee internal rangeIncreasePrice;
 
-    function setRewardPool(address payable _rp) external { // only governance
+    function setRewardPool(address payable _rp) public { // only governance
         rewardPool = _rp;
     }
 
-    function setBaseSampleSize(FPA.SampleSize _sz) external { // only governance
+    function setBaseSampleSize(FPA.SampleSize _sz) public { // only governance
         baseSampleSize = _sz;
     }
 
-    function setBaseRange(FPA.Range _rn) external { // only governance
+    function setBaseRange(FPA.Range _rn) public { // only governance
         baseRange = _rn;
     }
 
-    function setSampleIncreaseLimit(FPA.SampleSize _lim) external { // only governance
+    function setSampleIncreaseLimit(FPA.SampleSize _lim) public { // only governance
         sampleIncreaseLimit = _lim;
     }
 
-    function setRangeIncreasePrice(FPA.Fee _price) external { // only governance
+    function setRangeIncreasePrice(FPA.Fee _price) public { // only governance
         rangeIncreasePrice = _price;
+    }
+
+    function setIncentiveDuration(uint _duration) public virtual;
+
+    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip, uint _dur) {
+        setRewardPool(_rp);
+        setBaseSampleSize(_bss);
+        setBaseRange(_br);
+        setSampleIncreaseLimit(_sil);
+        setRangeIncreasePrice(_rip);
+        setIncentiveDuration(_dur);
     }
 
     function nextUpdateParameters() public virtual returns(FPA.SampleSize newSampleSize, FPA.Scale newScale);

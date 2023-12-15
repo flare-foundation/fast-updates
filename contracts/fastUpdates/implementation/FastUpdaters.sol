@@ -7,7 +7,7 @@ import { heapSort } from "../lib/Sort.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 import "../lib/Bn256.sol";
 
-contract FastUpdaters is IIFastUpdaters {
+contract FastUpdaters is IIFastUpdaters {    
     struct StagedProviderData {
         bool present;
         Bn256.G1Point publicKey;
@@ -19,6 +19,10 @@ contract FastUpdaters is IIFastUpdaters {
 
     uint baseSeed;
 
+    function getBaseSeed() public view returns (uint) {
+        return baseSeed;
+    }
+
     function stagedProviderData(
         Bn256.G1Point calldata publicKey,
         uint score
@@ -26,9 +30,12 @@ contract FastUpdaters is IIFastUpdaters {
         return StagedProviderData(true, publicKey, score);
     }
 
+    constructor(IVoterRegistry _voterRegistry) IIFastUpdaters(_voterRegistry) {}
+
     function registerNewProvider(NewProvider calldata newProvider) external override {
         SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
-        (, uint score) = verifySortitionCredential(round, newProvider.publicKey, 1, newProvider.credential);
+        (bool check, uint score) = verifySortitionCredential(round, newProvider.publicKey, 1, newProvider.credential);
+        require(check, "provided credential not valid");
         stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);
         stagedProviderAddresses.push(msg.sender);
     }

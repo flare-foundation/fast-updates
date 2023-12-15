@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { FastUpdater } from "./FastUpdater.sol";
 import "../lib/CircularList.sol" as CL;
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
+import "hardhat/console.sol";
+
 
 using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16, CL.circularResize, CL.clear, CL.sum } for uint16[];
 
@@ -14,7 +15,15 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     FPA.Fee[] private excessOfferIncreases;
 
     function setIncentiveDuration(uint _duration) public override { // only governance
-        // Clear all increases, resize arrays
+        delete sampleIncreases;
+        delete rangeIncreases;
+        delete excessOfferIncreases;
+
+        for (uint i = 0; i < _duration; ++i) {
+            sampleIncreases.push();
+            rangeIncreases.push();
+            excessOfferIncreases.push();
+        }
     }
 
     // This is an optimization to prevent recalculation of these numbers in every offer.
@@ -23,12 +32,11 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     FPA.Range range;
     FPA.Fee excessOfferValue;
 
-    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip) {
-        rewardPool = _rp;
-        baseSampleSize = sampleSize = _bss;
-        baseRange = range = _br;
-        sampleIncreaseLimit = _sil;
-        rangeIncreasePrice = _rip;
+    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip, uint _dur) 
+        IIFastUpdateIncentiveManager(_rp, _bss, _br, _sil, _rip, _dur)
+    {
+        sampleSize = baseSampleSize;
+        range = baseRange;
         excessOfferValue = FPA.Fee.wrap(1); // Arbitrary initial value, but must not be 0
     }
 
@@ -100,7 +108,7 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
 
     function sampleSizeIncrease(FPA.Fee dc, FPA.Range dr) private returns(FPA.SampleSize de) {
         FPA.Fee rangeCost = FPA.mul(rangeIncreasePrice, dr);
-        require(!FPA.lessThan(rangeCost, dc), "Insufficient contribution to pay for range increase");
+        require(!FPA.lessThan(dc, rangeCost), "Insufficient contribution to pay for range increase");
         FPA.Fee dx = FPA.sub(dc, rangeCost);
         incrementExcessOffer(dx);
         de = FPA.mul(FPA.frac(dx, excessOfferValue), sampleIncreaseLimit);

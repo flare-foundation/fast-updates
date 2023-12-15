@@ -10,6 +10,7 @@ import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
+import "hardhat/console.sol";
 
 contract FastUpdater is IIFastUpdater {
     // Circular list
@@ -29,23 +30,29 @@ contract FastUpdater is IIFastUpdater {
     constructor(
         IIFastUpdaters _fastUpdaters, 
         IIFastUpdateIncentiveManager _fastUpdateIncentiveManager,
-        FPA.Price[1000] memory _prices,
-        uint _submissionWindow
+        FPA.Price[] memory _prices,
+        uint _submissionWindow,
+        uint epochId
     ) IIFastUpdater(_fastUpdaters, _fastUpdateIncentiveManager)
     {
         setPrices(_prices);
         setSubmissionWindow(_submissionWindow);
-        finalizeBlock();
+        finalizeBlock(true, epochId);
     }
 
-    function setPrices(FPA.Price[1000] memory _prices) public {
-        for (uint i = 0; i < 1000; ++i) {
+    function getSortitionRound(uint blockNum) public view returns (uint seed, uint cutoff) {
+        SortitionRound memory sortitionRound = activeSortitionRounds[blockNum % activeSortitionRounds.length];
+        seed = sortitionRound.seed;
+        cutoff = sortitionRound.scoreCutoff;
+    }
+
+    function setPrices(FPA.Price[] memory _prices) public { // only governance
+        for (uint i = 0; i < _prices.length; ++i) {
             prices[i] = _prices[i];
         }
     }
 
-    function setNextSortitionRound(bool newSeed, FPA.SampleSize newSampleSize) private {
-        uint epochId; // TODO: Get this correctly
+    function setNextSortitionRound(bool newSeed, uint epochId, FPA.SampleSize newSampleSize) private {
         uint cutoff = getScoreCutoff(newSampleSize);
         uint seed;
         if (newSeed) { // TODO: this needs to be replaced with a real condition
@@ -53,6 +60,7 @@ contract FastUpdater is IIFastUpdater {
                 delete activeSortitionRounds[i];
             }
             IIFastUpdaters.ProviderRegistry memory registry = fastUpdaters.nextProviderRegistry(epochId);
+
             for (uint i = 0; i < registry.providerAddresses.length; ++i) {
                 activeProviders[registry.providerAddresses[i]] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
             }
@@ -61,15 +69,15 @@ contract FastUpdater is IIFastUpdater {
         else {
             seed = getPreviousSortitionRound(0).seed + 1;
         }
+
         setNextSortitionRound(SortitionRound(seed, cutoff));
     }
 
     // Called by Flare daemon at the end of each block
-    function finalizeBlock() public override { // only governance
+    function finalizeBlock(bool newSeed, uint epochId) public override { // only governance
         FPA.SampleSize newSampleSize;
         (newSampleSize, scale) = fastUpdateIncentiveManager.nextUpdateParameters();
-        bool newSeed; // TODO: use a real thing here
-        setNextSortitionRound(newSeed, newSampleSize);
+        setNextSortitionRound(newSeed, epochId, newSampleSize);
     }
 
     function submitUpdates(FastUpdates calldata updates) external override {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
+import "hardhat/console.sol";
 
 //import "./FixedPointArithmetic.sol" as FPA;
 
@@ -32,7 +33,7 @@ function forEachPackedBits2(bytes1 packedBits2, uint ij, function(int, uint) f) 
     for (uint k = 0; k < 8; k += 2) {
         int8 entry = int8(uint8(packedBits2 << k)) >> 6;
         assert(entry != -2);
-        f(entry, ij + k);
+        f(entry, ij + k/2);
     }
 }
 
