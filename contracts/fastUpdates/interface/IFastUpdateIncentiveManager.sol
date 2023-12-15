@@ -8,6 +8,10 @@ abstract contract IFastUpdateIncentiveManager {
     function getPrecision() view external virtual returns(FPA.Precision);
     function getRange() view external virtual returns(FPA.Range);
 
+    uint public incentiveDuration;
+
+    function setIncentiveDuration(uint _duration) public virtual;
+
     struct IncentiveOffer {
         FPA.Range rangeIncrease;
         FPA.Range rangeLimit;

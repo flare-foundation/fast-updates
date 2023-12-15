@@ -13,6 +13,10 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
     FPA.Range[] private rangeIncreases;
     FPA.Fee[] private excessOfferIncreases;
 
+    function setIncentiveDuration(uint _duration) public override { // only governance
+        // Clear all increases, resize arrays
+    }
+
     // This is an optimization to prevent recalculation of these numbers in every offer.
     // Extra bookkeeping is required.
     FPA.SampleSize sampleSize;

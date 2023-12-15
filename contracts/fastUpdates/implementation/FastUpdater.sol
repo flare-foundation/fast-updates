@@ -7,15 +7,42 @@ import { Deltas } from "../lib/Deltas.sol";
 import { SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
+import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
 
-// TODO: governance functions to change the anchor prices, e.g. at the time of deployment of this contract
 contract FastUpdater is IIFastUpdater {
     // Circular list
-    SortitionRound[] private activeSortitionRounds;
-    FPA.Price[1000] private prices;
-    FPA.Scale private scale;
+    SortitionRound[] public activeSortitionRounds;
+    FPA.Price[1000] public prices;
+    FPA.Scale public scale;
+    uint public submissionWindow;
+
+    function setSubmissionWindow(uint w) public override { // only governance
+        delete activeSortitionRounds;
+        for (uint i = 0; i < w; ++i) {  
+            activeSortitionRounds.push();
+        }
+        submissionWindow = w;
+    }
+
+    constructor(
+        IIFastUpdaters _fastUpdaters, 
+        IIFastUpdateIncentiveManager _fastUpdateIncentiveManager,
+        FPA.Price[1000] memory _prices,
+        uint _submissionWindow
+    ) IIFastUpdater(_fastUpdaters, _fastUpdateIncentiveManager)
+    {
+        setPrices(_prices);
+        setSubmissionWindow(_submissionWindow);
+        finalizeBlock();
+    }
+
+    function setPrices(FPA.Price[1000] memory _prices) public {
+        for (uint i = 0; i < 1000; ++i) {
+            prices[i] = _prices[i];
+        }
+    }
 
     function setNextSortitionRound(bool newSeed, FPA.SampleSize newSampleSize) private {
         uint epochId; // TODO: Get this correctly
@@ -71,12 +98,6 @@ contract FastUpdater is IIFastUpdater {
     }
     function setNextSortitionRound(SortitionRound memory x) private {
         activeSortitionRounds[ix(1)] = x;
-    }
-    function setSubmissionWindow(uint w) external override { // only governance
-        delete activeSortitionRounds;
-        for (uint i = 0; i < w; ++i) {  
-            activeSortitionRounds.push();
-        }
     }
 
     function fetchCurrentPrices(
