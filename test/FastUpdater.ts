@@ -39,13 +39,6 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
 
         fastUpdaters = await FastUpdaters.new(voterRegistry.address);
         fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new(governance.address, 100, 1, 1, 1, 8);
-        fastUpdater = await FastUpdater.new(
-            fastUpdaters.address, 
-            fastUpdateIncentiveManager.address,
-            ANCHOR_PRICES,
-            10,
-            TEST_EPOCH
-        );
         // fastUpdateIncentiveManager.setBase(100, 100, 100, [1], [1]);
 
         for (let i = 1; i <= NUM_ACCOUNTS; i++) {
@@ -66,6 +59,14 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
             credentials[i] = sortitionCredential;
             await fastUpdaters.registerNewProvider(newProvider, { from: accounts[i + 1].address });
         }
+
+        fastUpdater = await FastUpdater.new(
+            fastUpdaters.address, 
+            fastUpdateIncentiveManager.address,
+            ANCHOR_PRICES,
+            10,
+            TEST_EPOCH
+        );
     });
 
     it("should submit updates", async () => {
@@ -113,7 +114,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                 }
                 if (breakVar) break;
             }
-            await fastUpdater.finalizeBlock(true, TEST_EPOCH);
+            await fastUpdater.finalizeBlock(false, TEST_EPOCH);
             submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
             // console.log(submissionBlockNum);
         }
@@ -164,5 +165,5 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
             expect(Number(prices[i])).to.be.greaterThanOrEqual(Number(startingPrices[i]) * 0.99);
             expect(Number(prices[i])).to.be.lessThanOrEqual(Number(startingPrices[i]) * 1.01);
         }
-    }).skip();
+    });
 });

@@ -57,12 +57,16 @@ contract FastUpdater is IIFastUpdater {
         uint seed;
         if (newSeed) { // TODO: this needs to be replaced with a real condition
             for (uint i = 0; i < activeProviderAddresses.length; ++i) {
-                delete activeSortitionRounds[i];
+                delete activeProviders[activeProviderAddresses[i]];
             }
+            delete activeProviderAddresses;
+
             IIFastUpdaters.ProviderRegistry memory registry = fastUpdaters.nextProviderRegistry(epochId);
 
             for (uint i = 0; i < registry.providerAddresses.length; ++i) {
-                activeProviders[registry.providerAddresses[i]] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
+                address addr = registry.providerAddresses[i];
+                activeProviders[addr] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
+                activeProviderAddresses.push(addr);
             }
             seed = registry.seed;
         }
