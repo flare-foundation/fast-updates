@@ -1,0 +1,15 @@
+version: '3.3'
+
+services:
+  chain:
+    container_name: "chain"
+    build:
+      context: ..
+      dockerfile: ./simulation/docker/chain/Dockerfile
+    ports:
+      - 8545:8545
+  contracts:
+    container_name: "contracts"
+    build:
+      context: ..
+      dockerfile: ./simulation/docker/contracts/Dockerfile
