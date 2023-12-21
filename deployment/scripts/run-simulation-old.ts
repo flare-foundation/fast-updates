@@ -18,9 +18,12 @@ async function main() {
     const childProcesses = [];
 
     try {
-        // childProcesses.push(startNetwork());
+        childProcesses.push(startNetwork());
+
         const web3 = await retry(() => getWeb3(RPC), 3, 1000);
-        await setIntervalMining(web3, 10000);
+
+        setIntervalMining(web3, 10000);
+
         const accounts = loadAccounts(web3);
         const envConfig = {
             ...process.env,
@@ -28,28 +31,33 @@ async function main() {
             DEPLOYER_PRIVATE_KEY: accounts[0].privateKey,
         };
         process.env = envConfig;
+
         deployContracts(envConfig);
-        // let id = 1; // 0 is reserved for governance account
-        // for (let i = 0; i < PRICE_VOTER_COUNT; i++) {
-        //     childProcesses.push(startPriceVoter(id++));
-        //     await sleepFor(1000);
-        // }
-        // setTimeout(() => {
-        //     for (let i = 0; i < PRICE_VOTER_COUNT; i++) {
-        //         childProcesses.push(startRewardVoter(id++));
-        //         sleepFor(1000);
-        //     }
-        // }, 30_000);
-        // for (let i = 0; i < FINALIZER_COUNT; i++) {
-        //     childProcesses.push(startFinalizer(id++));
-        //     await sleepFor(1000);
-        // }
-        // childProcesses.push(startAdminDaemon());
-        // while (true) {
-        //     await sleepFor(10_000);
-        // }
+
+        let id = 1; // 0 is reserved for governance account
+        for (let i = 0; i < PRICE_VOTER_COUNT; i++) {
+            childProcesses.push(startPriceVoter(id++));
+            await sleepFor(1000);
+        }
+        setTimeout(() => {
+            for (let i = 0; i < PRICE_VOTER_COUNT; i++) {
+                childProcesses.push(startRewardVoter(id++));
+                sleepFor(1000);
+            }
+        }, 30_000);
+
+        for (let i = 0; i < FINALIZER_COUNT; i++) {
+            childProcesses.push(startFinalizer(id++));
+            await sleepFor(1000);
+        }
+
+        childProcesses.push(startAdminDaemon());
+
+        while (true) {
+            await sleepFor(10_000);
+        }
     } catch (e) {
-        // childProcesses.forEach(p => p.kill());
+        childProcesses.forEach(p => p.kill());
         throw e;
     }
 }

@@ -37,7 +37,12 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
             const sortitionRound = [seed, scoreCutoff];
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
-            const check = await sortition.testVerifySortitionCredential(sortitionRound, weight, pubKey, sortitionCredential);
+            const check = await sortition.testVerifySortitionCredential(
+                sortitionRound,
+                weight,
+                pubKey,
+                sortitionCredential
+            );
 
             if (proof.gamma.x > scoreCutoff) {
                 expect(check).to.equal(false);

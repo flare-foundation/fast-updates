@@ -6,10 +6,18 @@ services:
     build:
       context: ..
       dockerfile: ./simulation/docker/chain/Dockerfile
-    ports:
-      - 8545:8545
-  contracts:
-    container_name: "contracts"
+    # volumes:
+    #         - "../:/fast-updates"
+    # ports:
+    #   - 8545:8545
+  setup:
+    container_name: "setup"
     build:
       context: ..
-      dockerfile: ./simulation/docker/contracts/Dockerfile
+      dockerfile: ./simulation/docker/setup/Dockerfile
+    # network_mode: host
+    # volumes:
+      # - "~/.netrc:/root/.netrc"
+    #   - "../:/fast-updates"
+    depends_on:
+      - chain

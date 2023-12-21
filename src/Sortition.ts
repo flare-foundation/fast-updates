@@ -27,8 +27,8 @@ export function KeyGen(): SortitionKey {
 
 export function VerifiableRandomness(key: SortitionKey, seed: bigint, replicate: bigint): Proof {
     let toHash: string = encodePacked(
-        { value: toBN(seed.toString()), type: "uint256" },
-        { value: toBN(replicate.toString()), type: "uint256" }
+        { value: seed.toString(), type: "uint256" },
+        { value: replicate.toString(), type: "uint256" }
     )!;
 
     const h = g1HashToPoint(toHash);
@@ -37,18 +37,18 @@ export function VerifiableRandomness(key: SortitionKey, seed: bigint, replicate:
     const gToK = bn254.ProjectivePoint.BASE.multiply(k);
     const hToK = h.multiply(k);
     toHash = encodePacked(
-        { value: toBN(bn254.ProjectivePoint.BASE.x.toString()), type: "uint256" },
-        { value: toBN(bn254.ProjectivePoint.BASE.y.toString()), type: "uint256" },
-        { value: toBN(h.x.toString()), type: "uint256" },
-        { value: toBN(h.y.toString()), type: "uint256" },
-        { value: toBN(key.pk.x.toString()), type: "uint256" },
-        { value: toBN(key.pk.y.toString()), type: "uint256" },
-        { value: toBN(gamma.x.toString()), type: "uint256" },
-        { value: toBN(gamma.y.toString()), type: "uint256" },
-        { value: toBN(gToK.x.toString()), type: "uint256" },
-        { value: toBN(gToK.y.toString()), type: "uint256" },
-        { value: toBN(hToK.x.toString()), type: "uint256" },
-        { value: toBN(hToK.y.toString()), type: "uint256" }
+        { value: bn254.ProjectivePoint.BASE.x.toString(), type: "uint256" },
+        { value: bn254.ProjectivePoint.BASE.y.toString(), type: "uint256" },
+        { value: h.x.toString(), type: "uint256" },
+        { value: h.y.toString(), type: "uint256" },
+        { value: key.pk.x.toString(), type: "uint256" },
+        { value: key.pk.y.toString(), type: "uint256" },
+        { value: gamma.x.toString(), type: "uint256" },
+        { value: gamma.y.toString(), type: "uint256" },
+        { value: gToK.x.toString(), type: "uint256" },
+        { value: gToK.y.toString(), type: "uint256" },
+        { value: hToK.x.toString(), type: "uint256" },
+        { value: hToK.y.toString(), type: "uint256" }
     )!;
 
     const c = BigInt(sha256(toHash)) % bn254.CURVE.n;

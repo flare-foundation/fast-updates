@@ -39,7 +39,6 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
 
         fastUpdaters = await FastUpdaters.new(voterRegistry.address);
         fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new(governance.address, 100, 1, 1, 1, 8);
-        // fastUpdateIncentiveManager.setBase(100, 100, 100, [1], [1]);
 
         for (let i = 1; i <= NUM_ACCOUNTS; i++) {
             await voterRegistry.registerAsAVoter(TEST_EPOCH, toBN(VOTER_WEIGHT), { from: accounts[i].address });
@@ -61,7 +60,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         }
 
         fastUpdater = await FastUpdater.new(
-            fastUpdaters.address, 
+            fastUpdaters.address,
             fastUpdateIncentiveManager.address,
             ANCHOR_PRICES,
             10,
@@ -90,7 +89,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         }
         let breakVar = false;
         console.log();
-        console.log("Blocks")
+        console.log("Blocks");
         while (!breakVar) {
             const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
             console.log(submissionBlockNum, sortitionRound.seed.toString());
@@ -101,7 +100,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                     const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
                     if (proof.gamma.x < sortitionRound.cutoff) {
-                        console.log("submitting +-0-0+ client", i, "with rep ", rep);
+                        console.log("submitting +-0-0+ client", i, "with rep", rep);
                         const delta1 = "0x7310000000000000000000000000000000000000000000000000000000000000";
                         const delta2 = "0x0000000000000000000000000000000000000000000000000000";
                         const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
@@ -137,7 +136,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                     const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
                     if (proof.gamma.x < sortitionRound.cutoff) {
-                        console.log("submitting -+0+0- client", i, "with rep ", rep);
+                        console.log("submitting -+0+0- client", i, "with rep", rep);
                         const delta1 = "0xd130000000000000000000000000000000000000000000000000000000000000";
                         const delta2 = "0x0000000000000000000000000000000000000000000000000000";
                         const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
