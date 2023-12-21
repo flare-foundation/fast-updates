@@ -9,15 +9,20 @@ abstract contract IIFastUpdater is IFastUpdater {
     IIFastUpdaters internal fastUpdaters;
     IIFastUpdateIncentiveManager internal fastUpdateIncentiveManager;
 
-    function setFastUpdaters(IIFastUpdaters newFastUpdaters) external { // only governance
+    constructor(IIFastUpdaters _fastUpdaters, IIFastUpdateIncentiveManager _fastUpdateIncentiveManager) {
+        setFastUpdaters(_fastUpdaters);
+        setFastUpdateIncentiveManager(_fastUpdateIncentiveManager);
+    }
+
+    function setFastUpdaters(IIFastUpdaters newFastUpdaters) public { // only governance
         fastUpdaters = newFastUpdaters;
     }
 
-    function setFastUpdateIncentiveManager(IIFastUpdateIncentiveManager newFastUpdateIncentiveManager) external { // only governance
+    function setFastUpdateIncentiveManager(IIFastUpdateIncentiveManager newFastUpdateIncentiveManager) public { // only governance
         fastUpdateIncentiveManager = newFastUpdateIncentiveManager;
     }
 
-    function setSubmissionWindow(uint) external virtual;
+    function setSubmissionWindow(uint) public virtual;
 
-    function finalizeBlock() public virtual;
+    function finalizeBlock(bool, uint) public virtual;
 }

@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
+import "../lib/FixedPointArithmetic.sol" as FPA;
+
 abstract contract IFastUpdateIncentiveManager {
-    uint16 public expectedSampleSize8x8;
-    uint16 public precision0x16;
-    uint16 public range8x8;
+    function getExpectedSampleSize() view external virtual returns(FPA.SampleSize);
+    function getPrecision() view external virtual returns(FPA.Precision);
+    function getRange() view external virtual returns(FPA.Range);
+
+    uint public incentiveDuration;
 
     struct IncentiveOffer {
-        uint16 variationRangeIncrease0x16;
-        uint16 rangeLimit8x8;
+        FPA.Range rangeIncrease;
+        FPA.Range rangeLimit;
     }
 
     function offerIncentive(IncentiveOffer calldata) external payable virtual;

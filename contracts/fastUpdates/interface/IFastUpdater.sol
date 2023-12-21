@@ -3,6 +3,7 @@ pragma solidity 0.8.18;
 
 import { SortitionCredential } from "../lib/Sortition.sol";
 import "../lib/Bn256.sol";
+import "../lib/FixedPointArithmetic.sol" as FPA;
 import { Deltas } from "../lib/Deltas.sol";
 
 abstract contract IFastUpdater {
@@ -21,5 +22,5 @@ abstract contract IFastUpdater {
     }
 
     function submitUpdates(FastUpdates calldata) external virtual;
-    function fetchCurrentPrices(uint[] calldata) external view virtual returns(uint[] memory);
+    function fetchCurrentPrices(uint[] calldata) external view virtual returns(FPA.Price[] memory);
 }

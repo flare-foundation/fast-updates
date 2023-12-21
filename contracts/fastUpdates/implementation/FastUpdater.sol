@@ -7,42 +7,81 @@ import { Deltas } from "../lib/Deltas.sol";
 import { SortitionRound, SortitionCredential, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
+import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
+import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
+import "hardhat/console.sol";
 
 contract FastUpdater is IIFastUpdater {
-    SortitionRound[] private activeSortitionRounds;
+    // Circular list
+    SortitionRound[] public activeSortitionRounds;
+    FPA.Price[1000] public prices;
+    FPA.Scale public scale;
+    uint public submissionWindow;
 
-    function setSortitionParameters() private returns(uint16 expectedSampleSize8x8) {
-        uint16 newPrecision1x15;
-        (expectedSampleSize8x8, newPrecision1x15) = fastUpdateIncentiveManager.nextSortitionParameters();
-        setPrecision(newPrecision1x15);
+    function setSubmissionWindow(uint w) public override { // only governance
+        delete activeSortitionRounds;
+        for (uint i = 0; i < w; ++i) {  
+            activeSortitionRounds.push();
+        }
+        submissionWindow = w;
     }
 
-    function setNextSortitionRound(bool newSeed, uint16 expectedSampleSize8x8) private {
-        uint epochId; // TODO: Get this correctly
-        uint cutoff = getScoreCutoff(expectedSampleSize8x8);
+    constructor(
+        IIFastUpdaters _fastUpdaters, 
+        IIFastUpdateIncentiveManager _fastUpdateIncentiveManager,
+        FPA.Price[] memory _prices,
+        uint _submissionWindow,
+        uint epochId
+    ) IIFastUpdater(_fastUpdaters, _fastUpdateIncentiveManager)
+    {
+        setPrices(_prices);
+        setSubmissionWindow(_submissionWindow);
+        finalizeBlock(true, epochId);
+    }
+
+    function getSortitionRound(uint blockNum) public view returns (uint seed, uint cutoff) {
+        SortitionRound memory sortitionRound = activeSortitionRounds[blockNum % activeSortitionRounds.length];
+        seed = sortitionRound.seed;
+        cutoff = sortitionRound.scoreCutoff;
+    }
+
+    function setPrices(FPA.Price[] memory _prices) public { // only governance
+        for (uint i = 0; i < _prices.length; ++i) {
+            prices[i] = _prices[i];
+        }
+    }
+
+    function setNextSortitionRound(bool newSeed, uint epochId, FPA.SampleSize newSampleSize) private {
+        uint cutoff = getScoreCutoff(newSampleSize);
         uint seed;
         if (newSeed) { // TODO: this needs to be replaced with a real condition
             for (uint i = 0; i < activeProviderAddresses.length; ++i) {
-                delete activeSortitionRounds[i];
+                delete activeProviders[activeProviderAddresses[i]];
             }
+            delete activeProviderAddresses;
+
             IIFastUpdaters.ProviderRegistry memory registry = fastUpdaters.nextProviderRegistry(epochId);
+
             for (uint i = 0; i < registry.providerAddresses.length; ++i) {
-                activeProviders[registry.providerAddresses[i]] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
+                address addr = registry.providerAddresses[i];
+                activeProviders[addr] = ActiveProviderData(registry.providerKeys[i], registry.providerWeights[i]);
+                activeProviderAddresses.push(addr);
             }
             seed = registry.seed;
         }
         else {
             seed = getPreviousSortitionRound(0).seed + 1;
         }
+
         setNextSortitionRound(SortitionRound(seed, cutoff));
     }
 
     // Called by Flare daemon at the end of each block
-    function finalizeBlock() public override { // only governance
-        bool newSeed;
-        uint16 expectedSampleSize8x8 = setSortitionParameters();
-        setNextSortitionRound(newSeed, expectedSampleSize8x8);
+    function finalizeBlock(bool newSeed, uint epochId) public override { // only governance
+        FPA.SampleSize newSampleSize;
+        (newSampleSize, scale) = fastUpdateIncentiveManager.nextUpdateParameters();
+        setNextSortitionRound(newSeed, epochId, newSampleSize);
     }
 
     function submitUpdates(FastUpdates calldata updates) external override {
@@ -54,12 +93,12 @@ contract FastUpdater is IIFastUpdater {
         applyUpdates(updates.deltas);
     }
 
-    function getScoreCutoff(uint16 expectedSampleSize8x8) private pure returns (uint) {
+    function getScoreCutoff(FPA.SampleSize expectedSampleSize) private pure returns (uint) {
         // The formula is: (exp. s.size)/(num. prov.) = (score)/(score range)
         //   score range = 2**256
         //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
         //   exp. s.size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
-        return uint(expectedSampleSize8x8) << (256 - VIRTUAL_PROVIDER_BITS - 8);
+        return uint(FPA.SampleSize.unwrap(expectedSampleSize)) << (256 - VIRTUAL_PROVIDER_BITS - 8);
     }
 
     function ix(uint i) private view returns (uint) {
@@ -72,72 +111,14 @@ contract FastUpdater is IIFastUpdater {
     function setNextSortitionRound(SortitionRound memory x) private {
         activeSortitionRounds[ix(1)] = x;
     }
-    function setSubmissionWindow(uint w) external override { // only governance
-        delete activeSortitionRounds;
-        for (uint i = 0; i < w; ++i) {  
-            activeSortitionRounds.push();
-        }
-    }
-
-    uint32[1000] private anchorPrices;
-    int8[1000] private totalUnitDeltas;
-
-    // stand-in for uint16[8]; precisionPowers[i] = 1 + (0x15 bit fraction) = precision1x15 ** (2 ** i)
-    bytes16 private precisionPowers; // Must call setPrecision before this is used!
-
-    function padRight16(uint16 x) private pure returns(bytes16) {
-        return bytes16(bytes2(x));
-    }
-
-    function mulFixed1x15(uint16 x, uint16 y) private pure returns(uint16) {
-        return uint16((uint32(x) * uint32(y)) >> 15);
-    }
-
-    function setPrecision(uint16 scale1x15) private {
-        // Unavoidably expensive: when the precision changes the meaning of totalUnitDeltas also changes
-        for (uint feed = 0; feed < 1000; ++feed) {
-            weighAnchorPrice(feed);
-        }
-
-        bytes16 powers = padRight16(scale1x15);
-        for (uint i = 1; i < 7; ++i) {
-            scale1x15 = mulFixed1x15(scale1x15, scale1x15);
-            powers |= padRight16(scale1x15) >> (16 * i);
-        }
-        precisionPowers = powers;
-    }
-
-    function deltaFactor(int8 totalUnitDelta) private view returns (uint16 factor1x15) {
-        bytes16 powers = precisionPowers;
-        bytes1 deltaBinary = bytes1(uint8(totalUnitDelta));
-        factor1x15 = uint16(bytes2(hex"a0_00"));
-
-        bytes1 deltaBitMask = hex"01";
-        bytes16 powerMask = hex"ff_00_00_00_00_00_00_00";
-
-        while (deltaBinary != bytes1(0)) {
-            if (deltaBinary & deltaBitMask != 0) {
-                uint16 power1x15 = uint16(bytes2(precisionPowers & powerMask));
-                factor1x15 = mulFixed1x15(factor1x15, power1x15);
-            }
-
-            powers <<= 16;
-            deltaBinary >>= 1;
-        }
-    }
 
     function fetchCurrentPrices(
         uint[] calldata feeds
-    ) external view override returns(uint[] memory prices) {
-        prices = new uint[](feeds.length);
+    ) external view override returns(FPA.Price[] memory _prices) {
+        _prices = new FPA.Price[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
-            uint feed = feeds[i];
-            prices[i] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
+            _prices[i] = prices[feeds[i]];
         }
-    }
-
-    function computePrice(uint32 anchorPrice, int8 totalUnitDelta) private view returns(uint32) {
-        return uint32(uint(anchorPrice) * uint(deltaFactor(totalUnitDelta)) >> 15);
     }
 
     function applyUpdates(Deltas calldata deltas) private {
@@ -148,22 +129,11 @@ contract FastUpdater is IIFastUpdater {
         int delta,
         uint feed
     ) private {
-        int8 totalUnitDelta = totalUnitDeltas[feed];
-
-        if (totalUnitDelta == type(int8).min || totalUnitDelta == type(int8).max) {
-            weighAnchorPrice(feed, int8(delta));
+        if (delta == -1) {
+            prices[feed] = FPA.div(prices[feed], scale);
         }
-        else {
-            totalUnitDeltas[feed] = int8(totalUnitDelta + delta);
+        else if (delta == 1) {
+            prices[feed] = FPA.mul(prices[feed], scale);
         }
-    }
-
-    function weighAnchorPrice(uint feed, int8 extraDelta) private {
-        anchorPrices[feed] = computePrice(anchorPrices[feed], totalUnitDeltas[feed]);
-        totalUnitDeltas[feed] = extraDelta;
-    }
-
-    function weighAnchorPrice(uint feed) private {
-        weighAnchorPrice(feed, 0);
     }
 }

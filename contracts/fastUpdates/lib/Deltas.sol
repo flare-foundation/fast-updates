@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
+import "hardhat/console.sol";
+
+//import "./FixedPointArithmetic.sol" as FPA;
 
 // An array of 1000 2-bit entries, packed
 struct Deltas {
@@ -28,9 +31,9 @@ function forEachPackedBytes32n(bytes32 packedBytes, uint i, function(int, uint) 
 function forEachPackedBits2(bytes1 packedBits2, uint ij, function(int, uint) f) {
     ij *= 4;
     for (uint k = 0; k < 8; k += 2) {
-        int entry = int8(uint8(packedBits2 << k)) >> 6;
+        int8 entry = int8(uint8(packedBits2 << k)) >> 6;
         assert(entry != -2);
-        f(entry, ij + k);
+        f(entry, ij + k/2);
     }
 }
 

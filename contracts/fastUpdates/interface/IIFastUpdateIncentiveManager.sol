@@ -2,13 +2,47 @@
 pragma solidity 0.8.18;
 
 import { IFastUpdateIncentiveManager } from "./IFastUpdateIncentiveManager.sol";
+import "../lib/FixedPointArithmetic.sol" as FPA;
 
 abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager {
     address payable internal rewardPool;
 
-    function setRewardPool(address payable newRewardPool) external {
-        rewardPool = newRewardPool;
+    FPA.SampleSize internal baseSampleSize;
+    FPA.Range internal baseRange;
+
+    FPA.SampleSize internal sampleIncreaseLimit;
+    FPA.Fee internal rangeIncreasePrice;
+
+    function setRewardPool(address payable _rp) public { // only governance
+        rewardPool = _rp;
     }
 
-    function nextSortitionParameters() public virtual returns(uint16 newRange8x8, uint16 newPrecision1x15);
+    function setBaseSampleSize(FPA.SampleSize _sz) public { // only governance
+        baseSampleSize = _sz;
+    }
+
+    function setBaseRange(FPA.Range _rn) public { // only governance
+        baseRange = _rn;
+    }
+
+    function setSampleIncreaseLimit(FPA.SampleSize _lim) public { // only governance
+        sampleIncreaseLimit = _lim;
+    }
+
+    function setRangeIncreasePrice(FPA.Fee _price) public { // only governance
+        rangeIncreasePrice = _price;
+    }
+
+    function setIncentiveDuration(uint _duration) public virtual;
+
+    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip, uint _dur) {
+        setRewardPool(_rp);
+        setBaseSampleSize(_bss);
+        setBaseRange(_br);
+        setSampleIncreaseLimit(_sil);
+        setRangeIncreasePrice(_rip);
+        setIncentiveDuration(_dur);
+    }
+
+    function nextUpdateParameters() public virtual returns(FPA.SampleSize newSampleSize, FPA.Scale newScale);
 }

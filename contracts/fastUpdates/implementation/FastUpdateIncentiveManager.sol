@@ -1,84 +1,116 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { FastUpdater } from "./FastUpdater.sol";
 import "../lib/CircularList.sol" as CL;
+import "../lib/FixedPointArithmetic.sol" as FPA;
 import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
+import "hardhat/console.sol";
+
 
 using { CL.circularGet16, CL.circularHead16, CL.circularZero16, CL.circularAdd16, CL.circularResize, CL.clear, CL.sum } for uint16[];
 
 contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
-    uint private excessIncentiveValue;
+    FPA.SampleSize[] private sampleIncreases;
+    FPA.Range[] private rangeIncreases;
+    FPA.Fee[] private excessOfferIncreases;
 
-    uint16[] private sampleIncreases;
-    uint16[] private precisionIncreases;
-    uint16[] private rangeIncreases;
+    function setIncentiveDuration(uint _duration) public override { // only governance
+        delete sampleIncreases;
+        delete rangeIncreases;
+        delete excessOfferIncreases;
 
-    uint16 private baseSampleSize8x8;
-    uint16 private basePrecision0x16;
-    uint16 private baseRange8x8;
-
-    uint private rangeIncreasePrice;
-    uint private sampleIncreaseLimit;
-
-    function nextSortitionParameters() public override returns (uint16 newSampleSize, uint16 newPrecision) { // only governance
-        newSampleSize = baseSampleSize8x8 + sampleIncreases.sum();
-        newPrecision = basePrecision0x16 + precisionIncreases.sum();
-        sampleIncreases.circularZero16();
-        precisionIncreases.circularZero16();
+        for (uint i = 0; i < _duration; ++i) {
+            sampleIncreases.push();
+            rangeIncreases.push();
+            excessOfferIncreases.push();
+        }
     }
 
-    function incrementExpectedSampleSize(uint16 inc8x8) private {
-        sampleIncreases.circularAdd16(inc8x8);
+    // This is an optimization to prevent recalculation of these numbers in every offer.
+    // Extra bookkeeping is required.
+    FPA.SampleSize sampleSize;
+    FPA.Range range;
+    FPA.Fee excessOfferValue;
+
+    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip, uint _dur) 
+        IIFastUpdateIncentiveManager(_rp, _bss, _br, _sil, _rip, _dur)
+    {
+        sampleSize = baseSampleSize;
+        range = baseRange;
+        excessOfferValue = FPA.Fee.wrap(1); // Arbitrary initial value, but must not be 0
     }
 
-    function incrementPrecision(uint16 inc1x15) private {
-        sampleIncreases.circularAdd16(inc1x15);
+    function getExpectedSampleSize() view external override returns(FPA.SampleSize) {
+        return sampleSize;
     }
 
-    function incrementRange(uint16 inc8x8) private {
-        rangeIncreases.circularAdd16(inc8x8);
+    function computePrecision() view private returns(FPA.Precision) {
+        return FPA.div(range, sampleSize);
+    }
+
+    function getPrecision() view external override returns(FPA.Precision) {
+        return computePrecision();
+    }
+
+    function getRange() view external override returns(FPA.Range) {
+        return range;
+    }
+
+    // This is expected to be called only by FastUpdater, and only at the end of a block.
+    function nextUpdateParameters() public override returns (FPA.SampleSize newSampleSize, FPA.Scale newScale) { // only governance
+        newSampleSize = sampleSize;
+        newScale = FPA.scaleWithPrecision(computePrecision());
+        excessOfferValue = FPA.sub(excessOfferValue, excessOfferIncreases[0]);
+        range = FPA.sub(range, rangeIncreases[0]);
+        sampleSize = FPA.sub(sampleSize, sampleIncreases[0]);
+        
+        // sampleIncreases.circularZero16();
+        // precisionIncreases.circularZero16();
+        // rangeIncreases.circularZero16();
+    }
+
+    function incrementExpectedSampleSize(FPA.SampleSize de) private {
+        // sampleIncreases.circularAdd16(inc8x8);
+    }
+
+    function incrementRange(FPA.Range dr) private {
+        // rangeIncreases.circularAdd16(inc8x8);
+    }
+
+    function incrementExcessOffer(FPA.Fee dx) private {
+        excessOfferValue = FPA.add(excessOfferValue, dx);
+        // more...
     }
 
     function offerIncentive(IncentiveOffer calldata offer) external payable override {
-        // let c = total amount received as incentive
-        //     r = one-block relative variation range of numeric delta
-        //     p = precision of numeric delta
-        //     e = expected sample size
-        // then: r = (1 + p)^e - 1 = pe (approximate, for small p)
-        //       c = A r + C exp(B e)
-        // equivalently: dc = A dr + B (c - A r) de
-        // Given arguments dr = variationRangeIncrease, dc = msg.value, and current values of r, c: solve for de
-        // Then r' = r + dr
-        //      e' = e + de
-        //      p' = r'/e'
-        // and we update e', p'
-        // TODO: fixed-point arithmetic
+        (FPA.Fee dc, FPA.Range dr) = processIncentiveOffer(offer);
+        FPA.SampleSize de = sampleSizeIncrease(dc, dr);
 
-        uint contribution = msg.value;
-        uint16 variationRangeIncrease0x16 = offer.variationRangeIncrease0x16;
-        if (offer.rangeLimit8x8 < range8x8 + variationRangeIncrease0x16) {
-            uint16 newRangeIncrease = offer.rangeLimit8x8 - range8x8;
-            if (newRangeIncrease < 0) newRangeIncrease = 0;
-            contribution *= newRangeIncrease / variationRangeIncrease0x16;
-            variationRangeIncrease0x16 = newRangeIncrease;
-        }
-        uint dx = contribution - rangeIncreasePrice * variationRangeIncrease0x16;
-        excessIncentiveValue += dx;
-        uint16 de = uint16((dx / excessIncentiveValue) / sampleIncreaseLimit);
-
-        expectedSampleSize8x8 += de;
         incrementExpectedSampleSize(de);
+        incrementRange(dr);
+        require(FPA.lessThan(offer.rangeLimit, sampleSize), "Offer would make the precision greater than 100%");
 
-        range8x8 += variationRangeIncrease0x16;
-        incrementRange(variationRangeIncrease0x16);
+        rewardPool.transfer(FPA.Fee.unwrap(dc));
+        payable(msg.sender).transfer(msg.value - FPA.Fee.unwrap(dc));
+    }
 
-        uint16 newPrecision0x16 = range8x8 / expectedSampleSize8x8;
-        incrementPrecision(newPrecision0x16 - precision0x16);
-        precision0x16 = newPrecision0x16;
+    function processIncentiveOffer(IncentiveOffer calldata offer) private returns (FPA.Fee contribution, FPA.Range rangeIncrease) {
+        require(msg.value >> 240 == 0, "Incentive offer value capped at 240 bits");
+        contribution = FPA.Fee.wrap(uint240(msg.value));
+        rangeIncrease = offer.rangeIncrease;
 
-        assert(de >= 0);
-        payable(msg.sender).transfer(msg.value - contribution);
-        rewardPool.transfer(contribution);
+        if (FPA.lessThan(offer.rangeLimit, FPA.add(range, rangeIncrease))) {
+            FPA.Range newRangeIncrease = FPA.lessThan(offer.rangeLimit, range) ? FPA.zeroR : FPA.sub(offer.rangeLimit, range);
+            contribution = FPA.mul(FPA.frac(newRangeIncrease, rangeIncrease), contribution);
+            rangeIncrease = newRangeIncrease;
+        }
+    }
+
+    function sampleSizeIncrease(FPA.Fee dc, FPA.Range dr) private returns(FPA.SampleSize de) {
+        FPA.Fee rangeCost = FPA.mul(rangeIncreasePrice, dr);
+        require(!FPA.lessThan(dc, rangeCost), "Insufficient contribution to pay for range increase");
+        FPA.Fee dx = FPA.sub(dc, rangeCost);
+        incrementExcessOffer(dx);
+        de = FPA.mul(FPA.frac(dx, excessOfferValue), sampleIncreaseLimit);
     }
 }
