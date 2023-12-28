@@ -15,5 +15,11 @@ abstract contract IFastUpdateIncentiveManager {
         FPA.Range rangeLimit;
     }
 
+    event IncentiveOffered(
+        FPA.Range rangeIncrease,
+        FPA.SampleSize sampleSizeIncrease,
+        FPA.Fee offerAmount
+    );
+
     function offerIncentive(IncentiveOffer calldata) external payable virtual;
 }

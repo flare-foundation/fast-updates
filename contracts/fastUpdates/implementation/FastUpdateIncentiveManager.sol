@@ -91,6 +91,7 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager {
         require(FPA.lessThan(offer.rangeLimit, sampleSize), "Offer would make the precision greater than 100%");
 
         rewardPool.transfer(FPA.Fee.unwrap(dc));
+        emit IncentiveOffered(dr, de, dc);
         payable(msg.sender).transfer(msg.value - FPA.Fee.unwrap(dc));
     }
 

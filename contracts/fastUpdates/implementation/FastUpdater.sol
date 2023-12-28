@@ -91,6 +91,8 @@ contract FastUpdater is IIFastUpdater {
 
         verifySortitionCredential(sortitionRound, providerData.publicKey, providerData.sortitionWeight, updates.sortitionCredential);
         applyUpdates(updates.deltas);
+        uint epochId; // TODO: use a real value here
+        emit FastUpdate(epochId, msg.sender);
     }
 
     function getScoreCutoff(FPA.SampleSize expectedSampleSize) private pure returns (uint) {

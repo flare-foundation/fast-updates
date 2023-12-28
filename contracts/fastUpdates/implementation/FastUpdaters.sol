@@ -38,6 +38,8 @@ contract FastUpdaters is IIFastUpdaters {
         require(check, "provided credential not valid");
         stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);
         stagedProviderAddresses.push(msg.sender);
+        uint rewardEpoch; // TODO: use a real value here
+        emit NewProviderKey(rewardEpoch, msg.sender, newProvider.publicKey);
     }
 
     function nextProviderRegistry(uint epochId) public override returns (ProviderRegistry memory registry) { // only governance

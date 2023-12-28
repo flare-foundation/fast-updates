@@ -10,5 +10,11 @@ abstract contract IFastUpdaters {
         SortitionCredential credential;
     }
 
+    event NewProviderKey(
+        uint indexed rewardEpochId,
+        address indexed providerAddress,
+        Bn256.G1Point indexed providerPublicKey
+    );
+
     function registerNewProvider(NewProvider calldata) external virtual;
 }
