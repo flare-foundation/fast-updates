@@ -8,23 +8,30 @@ import { SortitionRound, SortitionCredential, verifySortitionCredential } from "
 import { IIFastUpdater } from "../interface/IIFastUpdater.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
 import { IIFastUpdateIncentiveManager } from "../interface/IIFastUpdateIncentiveManager.sol";
+import { IICircular } from "../interface/IICircular.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
 import "hardhat/console.sol";
 
-contract FastUpdater is IIFastUpdater {
+contract FastUpdater is IIFastUpdater, IICircular {
     // Circular list
     SortitionRound[] public activeSortitionRounds;
     FPA.Price[1000] public prices;
     FPA.Scale public scale;
-    uint public submissionWindow;
+
+    function roundIx(uint blockNum) view private returns (uint) {
+        return blockIx(blockNum, "Sortition round for the given block is no longer available");
+    }
+    
+    function getSubmissionWindow() public view override returns(uint) {
+        return circularLength;
+    }
 
     function setSubmissionWindow(uint w) public override { // only governance
         delete activeSortitionRounds;
         for (uint i = 0; i < w; ++i) {  
             activeSortitionRounds.push();
         }
-        submissionWindow = w;
     }
 
     constructor(
@@ -33,15 +40,17 @@ contract FastUpdater is IIFastUpdater {
         FPA.Price[] memory _prices,
         uint _submissionWindow,
         uint epochId
-    ) IIFastUpdater(_fastUpdaters, _fastUpdateIncentiveManager)
+    ) 
+        IIFastUpdater(_fastUpdaters, _fastUpdateIncentiveManager)
+        IICircular(_submissionWindow)
     {
         setPrices(_prices);
         setSubmissionWindow(_submissionWindow);
         finalizeBlock(true, epochId);
     }
 
-    function getSortitionRound(uint blockNum) public view returns (uint seed, uint cutoff) {
-        SortitionRound memory sortitionRound = activeSortitionRounds[blockNum % activeSortitionRounds.length];
+    function getSortitionRound(uint blockNum) external view returns (uint seed, uint cutoff) {
+        SortitionRound memory sortitionRound = activeSortitionRounds[roundIx(blockNum)];
         seed = sortitionRound.seed;
         cutoff = sortitionRound.scoreCutoff;
     }
@@ -71,10 +80,10 @@ contract FastUpdater is IIFastUpdater {
             seed = registry.seed;
         }
         else {
-            seed = getPreviousSortitionRound(0).seed + 1;
+            seed = activeSortitionRounds[thisIx()].seed + 1;
         }
 
-        setNextSortitionRound(SortitionRound(seed, cutoff));
+        activeSortitionRounds[nextIx()] = SortitionRound(seed, cutoff);
     }
 
     // Called by Flare daemon at the end of each block
@@ -85,8 +94,7 @@ contract FastUpdater is IIFastUpdater {
     }
 
     function submitUpdates(FastUpdates calldata updates) external override {
-        uint blocksAgo = block.number - updates.sortitionBlock;
-        SortitionRound storage sortitionRound = getPreviousSortitionRound(blocksAgo);
+        SortitionRound storage sortitionRound = activeSortitionRounds[roundIx(updates.sortitionBlock)];
         ActiveProviderData storage providerData = activeProviders[msg.sender];
 
         verifySortitionCredential(sortitionRound, providerData.publicKey, providerData.sortitionWeight, updates.sortitionCredential);
@@ -99,17 +107,6 @@ contract FastUpdater is IIFastUpdater {
         //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
         //   exp. s.size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
         return uint(FPA.SampleSize.unwrap(expectedSampleSize)) << (256 - VIRTUAL_PROVIDER_BITS - 8);
-    }
-
-    function ix(uint i) private view returns (uint) {
-        return (i + block.number) % activeSortitionRounds.length;
-    }
-    function getPreviousSortitionRound(uint i) private view returns (SortitionRound storage) {
-        assert(i < activeSortitionRounds.length);
-        return activeSortitionRounds[ix(activeSortitionRounds.length - i)];
-    }
-    function setNextSortitionRound(SortitionRound memory x) private {
-        activeSortitionRounds[ix(1)] = x;
     }
 
     function fetchCurrentPrices(

@@ -23,4 +23,5 @@ abstract contract IFastUpdater {
 
     function submitUpdates(FastUpdates calldata) external virtual;
     function fetchCurrentPrices(uint[] calldata) external view virtual returns(FPA.Price[] memory);
+    function getSubmissionWindow() public view virtual returns(uint);
 }
