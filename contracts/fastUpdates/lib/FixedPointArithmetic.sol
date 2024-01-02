@@ -13,6 +13,7 @@ import "hardhat/console.sol";
 Scale constant one = Scale.wrap(1 << 15); // 1.0000 0000 0000 000 binary
 SampleSize constant zeroS = SampleSize.wrap(0);
 Range constant zeroR = Range.wrap(0);
+Fee constant zeroF = Fee.wrap(0);
 
 function add(SampleSize x, SampleSize y) pure returns (SampleSize z) {
     z = SampleSize.wrap(SampleSize.unwrap(x) + SampleSize.unwrap(y));
