@@ -12,33 +12,77 @@ import { VerifiableRandomness, SortitionKey, Proof } from "./Sortition";
 export class PriceVoter {
     private readonly logger = getLogger(PriceVoter.name);
     private readonly key = KeyGen();
+    private address: string;
 
-    constructor(private readonly provider: Web3Provider) {}
+    constructor(private readonly provider: Web3Provider, address: string) {
+        this.provider = provider;
+        this.address = address;
+    }
 
-    async register(epoch: number) {
-        await this.provider.registerAsAVoter(epoch, 1000);
+    async registerAsVoter(epoch: number, weight: number) {
+        return await this.provider.registerAsAVoter(epoch, weight);
     }
 
     async registerAsProvider() {
         const baseSeed = await this.provider.getBaseSeed();
+        console.log("seed", baseSeed.toString());
         const replicate = BigInt(0); // Registration doesn't allow cherry-picking a replicate
         const proof: Proof = VerifiableRandomness(this.key, BigInt(baseSeed.toString()), replicate);
-        console.log("to");
 
-        await this.provider.registerAsProvider(this.key, proof);
-        console.log("registered");
+        return await this.provider.registerAsProvider(this.key, proof);
     }
 
-    async run() {
-        this.schedulePriceEpochActions();
+    async getWeight(address: string) {
+        return await this.provider.getWeight(address);
     }
 
-    schedulePriceEpochActions() {
+    async getMyWeight() {
+        return await this.provider.getWeight(this.address);
+    }
+
+    async fetchCurrentPrices(feeds: number[]) {
+        return await this.provider.fetchCurrentPrices(feeds);
+    }
+
+    async run(feeds: number[]) {
+        this.scheduleActions();
+        // todo: currently all is in one epoch
+        const myWeight = await this.getMyWeight();
+        console.log("my weight", myWeight);
+
+        const currentPrices = await this.fetchCurrentPrices(feeds);
+        console.log("current prices", currentPrices);
+
+        const submissionBlockNum = await this.provider.getBlockNumber();
+        const sortitionRound = await this.provider.getSortitionRound(submissionBlockNum);
+        console.log("sortition round", sortitionRound);
+
+        for (let rep = 0; rep < 1000; rep++) {
+            const proof: Proof = VerifiableRandomness(this.key, BigInt(sortitionRound.seed), BigInt(rep));
+
+            if (proof.gamma.x < BigInt(sortitionRound.cutoff)) {
+                console.log("submitting +-0-0+ client", PriceVoter.name, "with rep", rep);
+                const delta1 = "0x7310000000000000000000000000000000000000000000000000000000000000";
+                const delta2 = "0x0000000000000000000000000000000000000000000000000000";
+                const deltas: [string[], string] = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
+
+                const receipt = await this.provider.submitUpdates(proof, rep, deltas, submissionBlockNum);
+                console.log("receipt of update", receipt);
+                break;
+            }
+        }
+
+        this.scheduleActions();
+    }
+
+    scheduleActions() {
         // const timeSec = this.currentTimeSec();
         // const nextEpochStartSec = this.epochs.nextPriceEpochStartSec(timeSec);
 
         setTimeout(async () => {
-            this.schedulePriceEpochActions();
+            const myWeight = await this.getMyWeight();
+            console.log("my weight", myWeight);
+            this.scheduleActions();
             // try {
             //     await this.onPriceEpoch(); // TODO: If this runs for a long time, it might get interleaved with the next price epoch - is this a problem?
             // } catch (e) {

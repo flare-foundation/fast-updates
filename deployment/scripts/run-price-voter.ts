@@ -13,6 +13,8 @@ import { EpochSettings } from "../../src/protocol/utils/EpochSettings";
 import { BlockIndexer } from "../../src/BlockIndexer";
 
 const TEST_EPOCH = 1;
+const WEIGHT = 1000;
+const FEEDS = [0, 1, 2, 3, 4];
 
 async function main() {
     const myId = +process.argv[2];
@@ -28,26 +30,34 @@ async function main() {
     getLogger("price-voter").info(`Initializing data provider ${myId}, connecting to ${parameters.rpcUrl}`);
 
     let privateKey: string;
+    let address: string;
     if (process.env.DATA_PROVIDER_VOTING_KEY != undefined) {
         privateKey = process.env.DATA_PROVIDER_VOTING_KEY;
+        address = web3.eth.accounts.privateKeyToAccount(privateKey).address;
     } else {
         const accounts = loadAccounts(web3);
         privateKey = accounts[myId].privateKey;
+        address = accounts[myId].address;
     }
-    console.log("here");
-    const provider = await Web3Provider.create(contractAddresses, web3, parameters, privateKey);
+    const web3Provider = await Web3Provider.create(contractAddresses, web3, parameters, privateKey);
     // const epochSettings = EpochSettings.fromProvider(provider);
     // const feeds = await getFeeds(useRandomFeed, parameters);
     // const indexer = new BlockIndexer(provider);
     // indexer.run();
-    console.log("here2");
 
     // const client = new FTSOClient(provider, indexer, epochSettings, feeds);
-    const priceVoter = new PriceVoter(provider);
-    await priceVoter.register(TEST_EPOCH);
-    await priceVoter.registerAsProvider();
-    console.log("here3");
+    const priceVoter = new PriceVoter(web3Provider, address);
+    // let receipt = await priceVoter.registerAsVoter(TEST_EPOCH, WEIGHT);
+    // console.log("registered as a voter", receipt);
 
+    let receipt = await priceVoter.registerAsProvider();
+    console.log("registered as a provider of Fast Updates", receipt);
+
+    // await new Promise(r => setTimeout(r, 10000));
+
+    await priceVoter.run(FEEDS);
+
+    process.exit(0);
     // await priceVoter.run();
 }
 

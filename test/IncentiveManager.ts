@@ -12,6 +12,7 @@ const BASE_SAMPLE_SIZE = 5 * 2 ** 8; // 2^8 since scaled for 2^(-8) for fixed pr
 const BASE_RANGE = 2 * 2 ** 8;
 const SAMPLE_INCREASE_LIMIT = 5 * 2 ** 8;
 const RANGE_INCREASE_PRICE = 5;
+const DURATION = 8;
 
 contract(`FastUpdateIncentiveManager.sol; ${getTestFile(__filename)}`, async () => {
     let fastUpdateIncentiveManager: FastUpdateIncentiveManagerInstance;
@@ -25,7 +26,7 @@ contract(`FastUpdateIncentiveManager.sol; ${getTestFile(__filename)}`, async () 
             BASE_RANGE,
             SAMPLE_INCREASE_LIMIT,
             RANGE_INCREASE_PRICE,
-            8
+            DURATION
         );
     });
 

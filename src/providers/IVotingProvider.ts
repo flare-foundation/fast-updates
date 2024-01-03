@@ -43,6 +43,6 @@ export interface IVotingProvider {
     // signMessageWithKey(message: string, key: string): Promise<BareSignature>;
     // recoverSigner(message: string, signature: BareSignature): Promise<string>;
     // ////////////// Block calls //////////////
-    // getBlockNumber(): Promise<number>;
+    getBlockNumber(): Promise<number>;
     // getBlock(blockNumber: number): Promise<BlockData>;
 }

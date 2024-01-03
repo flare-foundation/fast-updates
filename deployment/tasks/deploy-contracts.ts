@@ -8,8 +8,16 @@ import { syncTimeToNow } from "../../test-utils/utils/test-helpers";
 const logger = getLogger("deploy-contracts");
 
 // TODO: extract constants to config
+// fast updater parameters
 const ANCHOR_PRICES = [100, 1000, 10000, 100000, 1000000, 10000000];
 const FIRST_EPOCH = 1;
+const SUBMISSION_WINDOW = 10;
+// incentive manager parameters
+const BASE_SAMPLE_SIZE = 5 * 2 ** 8; // 2^8 since scaled for 2^(-8) for fixed precision arithmetic
+const BASE_RANGE = 2 * 2 ** 8;
+const SAMPLE_INCREASE_LIMIT = 5 * 2 ** 8;
+const RANGE_INCREASE_PRICE = 5;
+const DURATION = 8;
 
 export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters: FTSOParameters) {
     await syncTimeToNow(hre);
@@ -21,11 +29,11 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     const fastUpdaters = await artifacts.require("FastUpdaters").new(voterRegistry.address);
     const fastUpdateIncentiveManager = await artifacts
         .require("FastUpdateIncentiveManager")
-        .new(governance.address, 100, 1, 1, 1, 8);
+        .new(governance.address, BASE_SAMPLE_SIZE, BASE_RANGE, SAMPLE_INCREASE_LIMIT, RANGE_INCREASE_PRICE, DURATION);
 
     const fastUpdater = await artifacts
         .require("FastUpdater")
-        .new(fastUpdaters.address, fastUpdateIncentiveManager.address, ANCHOR_PRICES, 10, FIRST_EPOCH);
+        .new(fastUpdaters.address, fastUpdateIncentiveManager.address, ANCHOR_PRICES, SUBMISSION_WINDOW, FIRST_EPOCH);
 
     const deployed = <ContractAddresses>{
         voterRegistry: voterRegistry.address,

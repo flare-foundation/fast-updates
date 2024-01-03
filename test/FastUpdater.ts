@@ -21,6 +21,7 @@ const ANCHOR_PRICES = [100, 1000, 10000, 100000, 1000000, 10000000];
 const NUM_FEEDS = ANCHOR_PRICES.length;
 const TEST_EPOCH = 1;
 const VOTER_WEIGHT = 1000;
+const SUBMISSION_WINDOW = 10;
 
 contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
     let fastUpdaters: FastUpdatersInstance;
@@ -63,7 +64,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
             fastUpdaters.address,
             fastUpdateIncentiveManager.address,
             ANCHOR_PRICES,
-            10,
+            SUBMISSION_WINDOW,
             TEST_EPOCH
         );
     });

@@ -24,6 +24,7 @@ const ELASTIC_BAND_WIDTH_PPM = 50000;
 const DEFAULT_REWARD_BELT_PPM = 500000; // 50%
 const TIMEOUT = 3000;
 const START_EPOCH = 1;
+const EPOCH_LEN = 10;
 
 const logger = getLogger("admin-daemon");
 
@@ -82,12 +83,19 @@ export async function runAdminDaemon(hre: HardhatRuntimeEnvironment, parameters:
         .require("FastUpdater")
         .at(contractAddresses.fastUpdater);
 
+    let submissionBlockNum: number = 0;
+    let newSeed: boolean;
     while (true) {
         try {
             // await tick(hre, governance);
-            await fastUpdater.finalizeBlock(false, START_EPOCH);
-            const submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
-            console.log(submissionBlockNum);
+            submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+            newSeed = false;
+            if (submissionBlockNum % EPOCH_LEN == 0) {
+                newSeed = true;
+                console.log("new seed");
+            }
+            const res = await fastUpdater.finalizeBlock(newSeed, START_EPOCH);
+            console.log(submissionBlockNum, res);
 
             // const currentRewardEpoch: number = (await votingManager.getCurrentRewardEpochId()).toNumber();
             // if (currentRewardEpoch > lastEpoch) {
