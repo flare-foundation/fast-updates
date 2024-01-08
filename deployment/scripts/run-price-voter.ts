@@ -1,20 +1,17 @@
 import { readFileSync } from "fs";
 import { FTSOClient } from "../../src/FTSOClient";
 import { Web3Provider } from "../../src/providers/Web3Provider";
-import { FTSOParameters, loadFTSOParameters } from "../config/FTSOParameters";
+import { loadFTSOParameters } from "../config/FTSOParameters";
 import { ContractAddresses, OUTPUT_FILE, loadAccounts } from "../tasks/common";
-import { IPriceFeed } from "../../src/price-feeds/IPriceFeed";
-import { Feed } from "../../src/protocol/voting-types";
 import { getLogger, setGlobalLogFile } from "../../src/utils/logger";
 import { getWeb3 } from "../../src/utils/web3";
-import { RandomPriceFeed, createPriceFeedConfigs } from "../../test-utils/utils/RandomPriceFeed";
 import { PriceVoter } from "../../src/PriceVoter";
-import { EpochSettings } from "../../src/protocol/utils/EpochSettings";
-import { BlockIndexer } from "../../src/BlockIndexer";
+import { PriceFeedProvider } from "../../src/price-feeds/PriceFeedProvider";
 
-const TEST_EPOCH = 1;
+// const TEST_EPOCH = 1;
+const EPOCH_LEN = 10;
 const WEIGHT = 1000;
-const FEEDS = [0, 1, 2, 3, 4];
+const FEEDS = [0, 1, 2, 3, 4, 5];
 
 async function main() {
     const myId = +process.argv[2];
@@ -40,63 +37,37 @@ async function main() {
         address = accounts[myId].address;
     }
     const web3Provider = await Web3Provider.create(contractAddresses, web3, parameters, privateKey);
-    // const epochSettings = EpochSettings.fromProvider(provider);
-    // const feeds = await getFeeds(useRandomFeed, parameters);
-    // const indexer = new BlockIndexer(provider);
-    // indexer.run();
 
-    // const client = new FTSOClient(provider, indexer, epochSettings, feeds);
-    const priceVoter = new PriceVoter(web3Provider, address);
-    // let receipt = await priceVoter.registerAsVoter(TEST_EPOCH, WEIGHT);
-    // console.log("registered as a voter", receipt);
+    const priceFeedProvider = new PriceFeedProvider(6);
 
-    let receipt = await priceVoter.registerAsProvider();
-    console.log("registered as a provider of Fast Updates", receipt);
+    const priceVoter = new PriceVoter(web3Provider, priceFeedProvider, address, EPOCH_LEN, WEIGHT);
+    const currentBlock = await web3Provider.getBlockNumber();
+    const nextEpoch = Math.floor((currentBlock + 1) / EPOCH_LEN) + 1;
 
-    // await new Promise(r => setTimeout(r, 10000));
+    const receipt1 = priceVoter.registerAsVoter(nextEpoch, WEIGHT);
+    const receipt2 = priceVoter.registerAsProvider(1);
+
+    let receipt = await receipt1;
+    console.log(
+        "registered as a voter for epoch",
+        nextEpoch,
+        "in block",
+        receipt.blockNumber,
+        "status",
+        receipt.status
+    );
+    receipt = await receipt2;
+    console.log("registered as a provider of Fast Updates", "in block", receipt.blockNumber, "status", receipt.status);
 
     await priceVoter.run(FEEDS);
 
     process.exit(0);
-    // await priceVoter.run();
 }
-
-// async function getFeeds(useRandomFeed: boolean, parameters: FTSOParameters) {
-//     let feeds: IPriceFeed[];
-//     if (useRandomFeed) {
-//         // Uses a fake randomised price feed.
-//         feeds = createPriceFeedConfigs(parameters.symbols).map(config => new RandomPriceFeed(config));
-//     } else {
-//         // Uses a real price feed, with additional random noise.
-//         feeds = randomizeFeeds(await getPriceFeeds(parameters.symbols));
-//     }
-//     return feeds;
-// }
 
 function loadContracts(): ContractAddresses {
     const parsed = JSON.parse(readFileSync(OUTPUT_FILE).toString());
     if (Object.entries(parsed).length == 0) throw Error(`No contract addresses found in ${OUTPUT_FILE}`);
     return parsed;
-}
-
-function randomizeFeeds(feeds: IPriceFeed[]): IPriceFeed[] {
-    return feeds.map(feed => {
-        return new (class implements IPriceFeed {
-            getPriceForEpoch(priceEpochId: number): number {
-                const originalPrice = feed.getPriceForEpoch(priceEpochId);
-                return addNoise(originalPrice);
-            }
-            getFeedInfo(): Feed {
-                return feed.getFeedInfo();
-            }
-        })();
-    });
-}
-
-function addNoise(num: number): number {
-    const noise = num * 0.001 * Math.random();
-    const sign = Math.random() < 0.5 ? -1 : 1;
-    return num + noise * sign;
 }
 
 main().catch(e => {

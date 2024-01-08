@@ -48,7 +48,7 @@ interface TypeChainContracts {
 
 export class Web3Provider implements IVotingProvider {
     private readonly logger = getLogger(Web3Provider.name);
-    private readonly account: Account;
+    public readonly account: Account;
 
     private constructor(
         readonly contractAddresses: ContractAddresses,
@@ -65,15 +65,20 @@ export class Web3Provider implements IVotingProvider {
         this.account = getAccount(this.web3, privateKey);
     }
 
-    async registerAsAVoter(epoch: number, weigh: number) {
+    async registerAsAVoter(epoch: number, weigh: number, addToNonce?: number) {
         const methodCall = this.contracts.voterRegistry.methods.registerAsAVoter(epoch, toBN(weigh));
-        return await this.signAndFinalize("RegisterAsAVoter", this.contracts.voterRegistry.options.address, methodCall);
+        return this.signAndFinalize(
+            "RegisterAsAVoter",
+            this.contracts.voterRegistry.options.address,
+            methodCall,
+            undefined,
+            undefined,
+            addToNonce
+        );
     }
 
     async getWeight(address: string) {
-        // console.log("address", address);
         const weight = await this.contracts.fastUpdater.methods.activeProviders(address).call();
-        console.log("weight1", weight);
 
         return weight.sortitionWeight;
     }
@@ -97,7 +102,7 @@ export class Web3Provider implements IVotingProvider {
         return sortitionRound;
     }
 
-    async registerAsProvider(key: SortitionKey, proof: Proof) {
+    async registerAsProvider(key: SortitionKey, proof: Proof, addToNonce?: number) {
         const replicate = 0; // Registration doesn't allow cherry-picking a replicate
 
         const pubKey: [string, string] = [key.pk.x.toString(), key.pk.y.toString()];
@@ -112,10 +117,19 @@ export class Web3Provider implements IVotingProvider {
         return await this.signAndFinalize(
             "RegisterAsProvider",
             this.contracts.fastUpdaters.options.address,
-            methodCall
+            methodCall,
+            undefined,
+            undefined,
+            addToNonce
         );
     }
-    async submitUpdates(proof: Proof, replicate: number, deltas: [string[], string], submissionBlockNum: number) {
+    async submitUpdates(
+        proof: Proof,
+        replicate: number,
+        deltas: [string[], string],
+        submissionBlockNum: number,
+        addToNonce?: number
+    ) {
         const sortitionCredential: [number, [string, string], string, string] = [
             replicate,
             [proof.gamma.x.toString(), proof.gamma.y.toString()],
@@ -131,7 +145,14 @@ export class Web3Provider implements IVotingProvider {
 
         const methodCall = this.contracts.fastUpdater.methods.submitUpdates(newFastUpdate);
 
-        await this.signAndFinalize("submitUpdates", this.contracts.fastUpdater.options.address, methodCall);
+        return await this.signAndFinalize(
+            "submitUpdates",
+            this.contracts.fastUpdater.options.address,
+            methodCall,
+            undefined,
+            undefined,
+            addToNonce
+        );
     }
 
     // /**
@@ -307,7 +328,7 @@ export class Web3Provider implements IVotingProvider {
     //     return +(await this.contracts.votingManager.methods.getCurrentPriceEpochId().call());
     // }
 
-    private async getNonce(account: Account): Promise<number> {
+    public async getNonce(account: Account): Promise<number> {
         return await this.web3.eth.getTransactionCount(account.address);
     }
 
@@ -317,7 +338,7 @@ export class Web3Provider implements IVotingProvider {
         fnToEncode: NonPayableTransactionObject<void>,
         value: number | BN = 0,
         from: Account = this.account,
-        forceNonce?: number,
+        addToNonce: number = 0,
         gasPriceMultiplier: number = this.config.gasPriceMultiplier
     ): Promise<TransactionReceipt> {
         // Try a dry-run of the transaction first.
@@ -331,8 +352,10 @@ export class Web3Provider implements IVotingProvider {
         const gasPrice = toBN(await this.web3.eth.getGasPrice());
 
         let txNonce: number;
+        // console.log("gas price", gasPrice.muln(gasPriceMultiplier).toString(), gasPriceMultiplier);
         const sendTx = async () => {
-            txNonce = forceNonce ?? (await this.getNonce(from));
+            txNonce = (await this.getNonce(from)) + addToNonce;
+            // console.log("nonce", txNonce);
             const tx = <TransactionConfig>{
                 from: from.address,
                 to: toAddress,

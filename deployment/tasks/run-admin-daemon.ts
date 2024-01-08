@@ -88,32 +88,20 @@ export async function runAdminDaemon(hre: HardhatRuntimeEnvironment, parameters:
     while (true) {
         try {
             // await tick(hre, governance);
-            submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+            submissionBlockNum = (await web3.eth.getBlockNumber()) + 2;
             newSeed = false;
             if (submissionBlockNum % EPOCH_LEN == 0) {
                 newSeed = true;
-                console.log("new seed");
+                console.log("new seed for epoch", submissionBlockNum / EPOCH_LEN);
             }
-            const res = await fastUpdater.finalizeBlock(newSeed, START_EPOCH);
-            console.log(submissionBlockNum, res);
-
-            // const currentRewardEpoch: number = (await votingManager.getCurrentRewardEpochId()).toNumber();
-            // if (currentRewardEpoch > lastEpoch) {
-            //     await offerRewards(
-            //         currentRewardEpoch + 1, // Offering for next epoch
-            //         parameters.symbols,
-            //         votingRewardManager,
-            //         governance.address,
-            //         [],
-            //         toBN(REWARD_VALUE)
-            //     );
-            //     lastEpoch = currentRewardEpoch;
-            // }
+            console.log("preparing for block", submissionBlockNum);
+            const res = await fastUpdater.finalizeBlock(newSeed, Math.floor(submissionBlockNum / EPOCH_LEN));
+            console.log(res);
         } catch (e) {
             logger.error(e);
         }
 
-        await sleepFor(TIMEOUT);
+        // await sleepFor(TIMEOUT);
     }
 }
 // /**
