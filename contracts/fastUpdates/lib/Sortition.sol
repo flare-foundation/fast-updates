@@ -11,8 +11,13 @@ struct ECPoint {
 }
 
 struct SortitionRound {
+    bool present;
     uint seed;
     uint scoreCutoff;
+}
+
+function sortitionRound(uint seed, uint scoreCutoff) pure returns (SortitionRound memory) {
+    return SortitionRound(true, seed, scoreCutoff);
 }
 
 function g1SignedPointToG1Point(ECPoint memory ecPt) view returns (Bn256.G1Point memory pt) {
@@ -31,16 +36,16 @@ struct SortitionCredential {
 }
 
 function verifySortitionCredential(
-    SortitionRound memory sortitionRound,
+    SortitionRound memory round,
     Bn256.G1Point memory pubKey,
     uint weight,
     SortitionCredential memory sortitionCredential
 ) view returns (bool, uint256) {
     require(sortitionCredential.replicate < weight, "Credential's replicate value is not less than provider's weight");
-    bool check = verifySortitionProof(sortitionRound.seed, pubKey, sortitionCredential);
+    bool check = verifySortitionProof(round.seed, pubKey, sortitionCredential);
     uint256 vrfVal = sortitionCredential.gamma.x;
 
-    return (check && vrfVal <= sortitionRound.scoreCutoff, vrfVal);
+    return (check && vrfVal <= round.scoreCutoff, vrfVal);
 }
 
 function verifySortitionProof(

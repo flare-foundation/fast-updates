@@ -21,15 +21,15 @@ abstract contract IncreaseManager is IICircular {
     constructor(uint _dur)
         IICircular(_dur)
     {
-        init(_dur);
+        init();
     }
 
-    function init(uint _duration) internal {
+    function init() internal {
         delete sampleIncreases;
         delete rangeIncreases;
         delete excessOfferIncreases;
 
-        for (uint i = 0; i < _duration; ++i) {
+        for (uint i = 0; i < circularLength; ++i) {
             sampleIncreases.push();
             rangeIncreases.push();
             excessOfferIncreases.push();
@@ -74,7 +74,8 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager, IncreaseMan
     }
 
     function setIncentiveDuration(uint _dur) public override {
-        IncreaseManager.init(_dur);
+        setCircularLength(_dur);
+        IncreaseManager.init();
     }
 
     function getIncentiveDuration() external view override returns(uint) {

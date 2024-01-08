@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import { SortitionCredential, SortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
+import { SortitionCredential, SortitionRound, sortitionRound, verifySortitionCredential } from "../lib/Sortition.sol";
 import { IVoterRegistry } from "../interface/IVoterRegistry.sol";
 import { heapSort } from "../lib/Sort.sol";
 import { IIFastUpdaters } from "../interface/IIFastUpdaters.sol";
@@ -33,7 +33,7 @@ contract FastUpdaters is IIFastUpdaters {
     constructor(IVoterRegistry _voterRegistry) IIFastUpdaters(_voterRegistry) {}
 
     function registerNewProvider(NewProvider calldata newProvider) external override {
-        SortitionRound memory round = SortitionRound(baseSeed, type(uint).max);
+        SortitionRound memory round = sortitionRound(baseSeed, type(uint).max);
         (bool check, uint score) = verifySortitionCredential(round, newProvider.publicKey, 1, newProvider.credential);
         require(check, "provided credential not valid");
         stagedProviders[msg.sender] = stagedProviderData(newProvider.publicKey, score);

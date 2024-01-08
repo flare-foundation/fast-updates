@@ -5,6 +5,10 @@ abstract contract IICircular {
     uint circularLength;
 
     constructor(uint _l) {
+        setCircularLength(_l);
+    }
+
+    function setCircularLength(uint _l) internal {
         circularLength = _l;
     }
 
@@ -13,8 +17,9 @@ abstract contract IICircular {
     }
 
     function blockIx(uint blockNum, string memory failMsg) internal view returns (uint) {
-        require(block.number < blockNum + circularLength, failMsg);
-        return ix(blockNum);
+        require(blockNum <= block.number && block.number < blockNum + circularLength, failMsg);
+        uint blocksAgo = block.number - blockNum;
+        return backIx(blocksAgo);
     }
 
     function backIx(uint i) internal view returns (uint) {
