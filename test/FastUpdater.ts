@@ -70,7 +70,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
     });
 
     it("should submit updates", async () => {
-        let submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
+        let submissionBlockNum;
 
         for (let i = 0; i < NUM_ACCOUNTS; i++) {
             const provider = await fastUpdater.activeProviders.call(accounts[i + 1].address);
@@ -92,6 +92,10 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         console.log();
         console.log("Blocks");
         while (!breakVar) {
+            await fastUpdater.finalizeBlock(false, TEST_EPOCH);
+            submissionBlockNum = await web3.eth.getBlockNumber();
+            // console.log(submissionBlockNum);
+
             const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
             console.log(submissionBlockNum, sortitionRound.seed.toString());
             for (let i = 0; i < NUM_ACCOUNTS; i++) {
@@ -100,8 +104,8 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                     const proof: Proof = VerifiableRandomness(keys[i], sortitionRound.seed, replicate);
                     const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
-                    if (proof.gamma.x < sortitionRound.cutoff) {
-                        console.log("submitting +-0-0+ client", i, "with rep", rep);
+                    if (proof.gamma.x < sortitionRound.scoreCutoff) {
+                        console.log("submitting +-0-0+ client", i, "with rep ", rep);
                         const delta1 = "0x7310000000000000000000000000000000000000000000000000000000000000";
                         const delta2 = "0x0000000000000000000000000000000000000000000000000000";
                         const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
@@ -114,11 +118,8 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                 }
                 if (breakVar) break;
             }
-            await fastUpdater.finalizeBlock(false, TEST_EPOCH);
-            submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
-            // console.log(submissionBlockNum);
         }
-        let pricesBN: BN[] = await fastUpdater.fetchCurrentPrices(feeds);
+        let pricesBN: BN[] = await fastUpdater.fetchCurrentPrices.call(feeds);
         const prices: bigint[] = new Array();
         console.log("Middle prices");
         for (let i = 0; i < NUM_FEEDS; i++) {
@@ -127,6 +128,10 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         }
         breakVar = false;
         while (!breakVar) {
+            await fastUpdater.finalizeBlock(false, TEST_EPOCH);
+            submissionBlockNum = (await web3.eth.getBlockNumber()) - 1;
+            console.log(submissionBlockNum);
+
             const sortitionRound = await fastUpdater.getSortitionRound(submissionBlockNum);
             console.log(submissionBlockNum, sortitionRound.seed.toString());
 
@@ -136,8 +141,8 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                     const proof: Proof = VerifiableRandomness(keys[i], sortitionRound.seed, replicate);
                     const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
-                    if (proof.gamma.x < sortitionRound.cutoff) {
-                        console.log("submitting -+0+0- client", i, "with rep", rep);
+                    if (proof.gamma.x < sortitionRound.scoreCutoff) {
+                        console.log("submitting -+0+0- client", i, "with rep ", rep);
                         const delta1 = "0xd130000000000000000000000000000000000000000000000000000000000000";
                         const delta2 = "0x0000000000000000000000000000000000000000000000000000";
                         const deltas = [[delta1, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
@@ -150,12 +155,9 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                 }
                 if (breakVar) break;
             }
-            await fastUpdater.finalizeBlock(true, TEST_EPOCH);
-            submissionBlockNum = (await web3.eth.getBlockNumber()) + 1;
-            // console.log(submissionBlockNum);
         }
 
-        pricesBN = await fastUpdater.fetchCurrentPrices(feeds);
+        pricesBN = await fastUpdater.fetchCurrentPrices.call(feeds);
         console.log("End prices");
         for (let i = 0; i < NUM_FEEDS; i++) {
             prices[i] = BigInt(pricesBN[i].toString());

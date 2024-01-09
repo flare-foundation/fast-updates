@@ -34,7 +34,7 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
             const weight = replicate + BigInt(1);
 
             const proof: Proof = VerifiableRandomness(key, seed, replicate);
-            const sortitionRound = [seed, scoreCutoff];
+            const sortitionRound = [true, seed, scoreCutoff];
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
             const check = await sortition.testVerifySortitionCredential(
