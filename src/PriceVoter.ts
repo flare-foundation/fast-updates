@@ -1,13 +1,8 @@
-import { FTSOClient } from "./FTSOClient";
 import { getLogger } from "./utils/logger";
 import { sleepFor } from "./utils/time";
-import { errorString } from "./utils/error";
-import { BlockIndexer } from "./BlockIndexer";
-import { EpochSettings } from "./protocol/utils/EpochSettings";
-import { EpochData } from "./protocol/voting-types";
 import { Web3Provider } from "./providers/Web3Provider";
 import { KeyGen } from "./Sortition";
-import { VerifiableRandomness, SortitionKey, Proof } from "./Sortition";
+import { VerifiableRandomness, Proof } from "./Sortition";
 import { TransactionReceipt } from "web3-core";
 import { PriceFeedProvider } from "./price-feeds/PriceFeedProvider";
 
@@ -68,7 +63,6 @@ export class PriceVoter {
 
             let voterReceipt: Promise<TransactionReceipt>;
             let providerReceipt: Promise<TransactionReceipt>;
-            // let updateReceipt: Promise<TransactionReceipt | void> = Promise.resolve();
             const updateReceipts: Promise<TransactionReceipt>[] = [];
             let receipt: TransactionReceipt = <TransactionReceipt>{};
             if ((blockNum + 1) % this.epochLen == 0) {
@@ -81,26 +75,19 @@ export class PriceVoter {
             console.log("current prices", currentPrices);
 
             const sortitionRound = await this.provider.getSortitionRound(blockNum);
-            // console.log("sortition round", sortitionRound);
 
             for (let rep = 0; rep < myWeight; rep++) {
                 const proof: Proof = VerifiableRandomness(this.key, BigInt(sortitionRound.seed), BigInt(rep));
 
                 if (proof.gamma.x < BigInt(sortitionRound.cutoff)) {
-                    // console.log("submitting +-0-0+ with rep", rep, "for block", blockNum);
-                    // const delta1 = "0x7310000000000000000000000000000000000000000000000000000000000000";
-                    const delta3 = "0x0000000000000000000000000000000000000000000000000000000000000000";
-                    const delta2 = "0x0000000000000000000000000000000000000000000000000000";
-                    // const deltas: [string[], string] = [
-                    //     [delta1, delta1, delta1, delta1, delta1, delta1, delta1],
-                    //     delta2,
-                    // ];
-                    const ddeltas = this.priceFeedProvider.getFeed();
-                    const deltas: [string[], string] = [
-                        ["0x" + ddeltas.slice(0, 64), delta3, delta3, delta3, delta3, delta3, delta3],
-                        delta2,
-                    ];
-                    console.log("submitting", ddeltas.slice(0, 3), rep, "for block", blockNum);
+                    const deltas: [string[], string] = this.priceFeedProvider.getFeed();
+                    console.log(
+                        "submitting",
+                        deltas[0][0].slice(0, Math.ceil(this.priceFeedProvider.numFeeds / 2)),
+                        rep,
+                        "for block",
+                        blockNum
+                    );
 
                     updateReceipts.push(this.provider.submitUpdates(proof, rep, deltas, blockNum, addToNonce));
                     addToNonce++;
@@ -161,114 +148,7 @@ export class PriceVoter {
             if (blockNum >= minedBlockNum) {
                 return;
             }
-            await sleep(1000);
+            await sleepFor(1000);
         }
     }
-
-    scheduleActions() {
-        // const timeSec = this.currentTimeSec();
-        // const nextEpochStartSec = this.epochs.nextPriceEpochStartSec(timeSec);
-
-        setTimeout(async () => {
-            const myWeight = await this.getMyWeight();
-            console.log("my weight", myWeight);
-            this.scheduleActions();
-            // try {
-            //     await this.onPriceEpoch(); // TODO: If this runs for a long time, it might get interleaved with the next price epoch - is this a problem?
-            // } catch (e) {
-            //     this.logger.error(`Error in price epoch, terminating: ${errorString(e)}`);
-            //     process.exit(1);
-            // }
-        }, 5000);
-    }
-
-    // async onPriceEpoch() {
-    //     const currentPriceEpochId = this.epochs.priceEpochIdForTime(this.currentTimeSec());
-
-    //     if (
-    //         this.lastProcessedPriceEpochId !== undefined &&
-    //         this.lastProcessedPriceEpochId !== currentPriceEpochId - 1
-    //     ) {
-    //         this.logger.error(
-    //             `Skipped a price epoch. Last processed: ${this.lastProcessedPriceEpochId}, current: ${currentPriceEpochId}. Will to participate in this round.`
-    //         );
-    //         this.previousPriceEpochData = undefined;
-    //     }
-
-    //     const currentRewardEpochId = this.epochs.rewardEpochIdForPriceEpochId(currentPriceEpochId);
-    //     this.logger.info(
-    //         `[${currentPriceEpochId}] Processing price epoch, current reward epoch: ${currentRewardEpochId}.`
-    //     );
-
-    //     const nextRewardEpochId = currentRewardEpochId + 1;
-
-    //     if (this.isRegisteredForRewardEpoch(currentRewardEpochId)) {
-    //         await this.runVotingProcotol(currentPriceEpochId);
-    //         this.lastProcessedPriceEpochId = currentPriceEpochId;
-    //     }
-
-    //     await this.maybeRegisterForRewardEpoch(nextRewardEpochId);
-
-    //     this.logger.info(`[${currentPriceEpochId}] Finished processing price epoch.`);
-    // }
-
-    // private async runVotingProcotol(currentEpochId: number) {
-    //     const priceEpochData = this.client.getPricesForEpoch(currentEpochId);
-    //     this.logger.info(`[${currentEpochId}] Committing data for current epoch.`);
-    //     await this.client.commit(priceEpochData);
-
-    //     await sleepFor(2000);
-    //     if (this.previousPriceEpochData !== undefined) {
-    //         const previousEpochId = currentEpochId - 1;
-    //         this.logger.info(`[${currentEpochId}] Revealing data for previous epoch: ${previousEpochId}.`);
-    //         await this.client.reveal(this.previousPriceEpochData);
-    //         await this.waitForRevealEpochEnd();
-    //         this.logger.info(
-    //             `[${currentEpochId}] Calculating results for previous epoch ${previousEpochId} and signing.`
-    //         );
-    //         const result = await this.client.calculateResultsAndSign(previousEpochId);
-    //         await this.awaitFinalization(previousEpochId);
-
-    //         await this.client.publishPrices(result, [0, 1]);
-    //     }
-    //     this.previousPriceEpochData = priceEpochData;
-    // }
-
-    // private async awaitFinalization(priceEpochId: number) {
-    //     while (!this.index.getFinalize(priceEpochId)) {
-    //         this.logger.info(`Epoch ${priceEpochId} not finalized, keep processing new blocks`);
-    //         await sleepFor(500);
-    //     }
-    //     this.logger.info(`Epoch ${priceEpochId} finalized, continue.`);
-    // }
-
-    // private async maybeRegisterForRewardEpoch(nextRewardEpochId: number) {
-    //     if (
-    //         this.isRegisteredForRewardEpoch(nextRewardEpochId) ||
-    //         this.index.getRewardOffers(nextRewardEpochId).length === 0
-    //     ) {
-    //         return;
-    //     }
-    //     this.logger.info(`Registering for next reward epoch ${nextRewardEpochId}`);
-    //     await this.client.registerAsVoter(nextRewardEpochId);
-
-    //     this.registeredRewardEpochs.add(nextRewardEpochId);
-    // }
-
-    // private isRegisteredForRewardEpoch(rewardEpochId: number): boolean {
-    //     return this.registeredRewardEpochs.has(rewardEpochId);
-    // }
-
-    // private async waitForRevealEpochEnd() {
-    //     const revealPeriodDurationMs = this.epochs.revealDurationSec * 1000;
-    //     await sleepFor(revealPeriodDurationMs + 1);
-    // }
-
-    // private currentTimeSec(): number {
-    //     return Math.floor(Date.now() / 1000);
-    // }
-}
-
-function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }

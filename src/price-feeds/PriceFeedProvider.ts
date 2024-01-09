@@ -1,13 +1,15 @@
 import { randomInt } from "crypto";
-import { Feed } from "../protocol/voting-types";
-import { getLogger } from "../utils/logger";
 
 export class PriceFeedProvider {
-    constructor(private readonly numFeeds: number) {
+    public numFeeds: number;
+    constructor(numFeeds: number) {
+        if (numFeeds > 64) {
+            throw new Error("Number of feeds should be at most 64.");
+        }
         this.numFeeds = numFeeds;
     }
 
-    getFeed(): string {
+    getFeed(): [string[], string] {
         let feeds: string = "";
         let feed = 0;
         for (let i = 0; i < this.numFeeds; i++) {
@@ -32,8 +34,12 @@ export class PriceFeedProvider {
                 feeds = feeds + feed.toString(16);
             }
         }
-        feeds = feeds + "0".repeat(500 - feeds.length);
+        feeds = feeds + "0".repeat(64 - feeds.length);
 
-        return feeds;
+        const delta1 = "0x" + "0".repeat(64);
+        const delta2 = "0x" + "0".repeat(52);
+        const deltas: [string[], string] = [["0x" + feeds, delta1, delta1, delta1, delta1, delta1, delta1], delta2];
+
+        return deltas;
     }
 }
