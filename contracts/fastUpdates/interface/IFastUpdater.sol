@@ -21,6 +21,11 @@ abstract contract IFastUpdater {
         Deltas deltas;
     }
 
+    event FastUpdate(
+        uint indexed epochId,
+        address indexed providerAddress
+    );
+
     function submitUpdates(FastUpdates calldata) external virtual;
     function fetchCurrentPrices(uint[] calldata) external view virtual returns(FPA.Price[] memory);
 }

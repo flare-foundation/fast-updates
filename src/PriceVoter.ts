@@ -83,7 +83,7 @@ export class PriceVoter {
                     const deltas: [string[], string] = this.priceFeedProvider.getFeed();
                     console.log(
                         "submitting",
-                        deltas[0][0].slice(0, Math.ceil(this.priceFeedProvider.numFeeds / 2)),
+                        deltas[0][0].slice(2, 2 + Math.ceil(this.priceFeedProvider.numFeeds / 2)),
                         rep,
                         "for block",
                         blockNum
