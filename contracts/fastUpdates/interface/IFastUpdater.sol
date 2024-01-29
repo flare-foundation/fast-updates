@@ -22,7 +22,6 @@ abstract contract IFastUpdater {
     }
 
     event FastUpdate(
-        uint indexed epochId,
         address indexed providerAddress
     );
 
