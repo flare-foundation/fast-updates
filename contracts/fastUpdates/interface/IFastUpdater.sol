@@ -6,15 +6,7 @@ import "../lib/Bn256.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import { Deltas } from "../lib/Deltas.sol";
 
-abstract contract IFastUpdater {
-    struct ActiveProviderData {
-        Bn256.G1Point publicKey;
-        uint sortitionWeight;
-    }
-
-    mapping (address => ActiveProviderData) public activeProviders;
-    address[] public activeProviderAddresses;
-
+interface IFastUpdater {
     struct FastUpdates {
         uint sortitionBlock;
         SortitionCredential sortitionCredential;
@@ -25,7 +17,8 @@ abstract contract IFastUpdater {
         address indexed providerAddress
     );
 
-    function submitUpdates(FastUpdates calldata) external virtual;
-    function fetchCurrentPrices(uint[] calldata) external view virtual returns(FPA.Price[] memory);
-    function getSubmissionWindow() public view virtual returns(uint);
+    function submitUpdates(FastUpdates calldata) external;
+    function fetchCurrentPrices(uint[] calldata) external view  returns(FPA.Price[] memory);
+    function currentScoreCutoff() external view returns (uint);
+    function currentSortitionWeight(address voter) external view returns (uint);
 }

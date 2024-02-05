@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import glob from "glob";
 import Web3 from "web3";
 import { Account } from "web3-core";
-import { BareSignature, BlockData, TxData } from "../protocol/voting-types";
+import { BareSignature, BlockData, TxData } from "./voting-types";
 import { retry } from "./retry";
 import { TransactionReceipt } from "web3-core/types";
 

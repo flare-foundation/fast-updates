@@ -4,59 +4,33 @@ import { ContractAddresses } from "../../deployment/tasks/common";
 
 import Web3 from "web3";
 import { FTSOParameters } from "../../deployment/config/FTSOParameters";
-import {
-    VoterRegistry,
-    FastUpdater,
-    FastUpdaters,
-    FastUpdateIncentiveManager,
-} from "../../typechain-web3/contracts/fastUpdates/implementation";
+import { VoterRegistry, FlareSystemManager } from "../../typechain-web3/contracts/fastUpdates/interface/mocks";
+import { FlareSystemMock } from "../../typechain-web3/contracts/fastUpdates/test";
+import { FastUpdater } from "../../typechain-web3/contracts/fastUpdates/implementation/FastUpdater";
+import { FastUpdateIncentiveManager } from "../../typechain-web3/contracts/fastUpdates/implementation/FastUpdateIncentiveManager";
 import { NonPayableTransactionObject } from "../../typechain-web3/types";
-import {
-    BareSignature,
-    BlockData,
-    RewardClaimWithProof,
-    EpochData,
-    EpochResult,
-    Offer,
-    Address,
-} from "../protocol/voting-types";
-import { ZERO_ADDRESS, hexlifyBN, toBN } from "../protocol/utils/voting-utils";
-import {
-    getAccount,
-    getFilteredBlock,
-    isRevertError as isRevertTxError,
-    isTransientTxError,
-    loadContract,
-    recoverSigner,
-    signMessage,
-} from "../utils/web3";
-import { IVotingProvider } from "./IVotingProvider";
+import { toBN } from "../utils/voting-utils";
+import { getAccount, loadContract } from "../utils/web3";
 import { getLogger } from "../utils/logger";
-import { retryPredicate, retryWithTimeout } from "../utils/retry";
+import { promiseWithTimeout, retryPredicate } from "../utils/retry";
 import { RevertedTxError, asError } from "../utils/error";
-import { KeyGen, VerifiableRandomness, SortitionKey, Proof } from "../Sortition";
+import { SortitionKey, Proof } from "../Sortition";
+import { sleepFor } from "../utils/time";
 
 interface TypeChainContracts {
-    // readonly votingRewardManager: VotingRewardManager;
-    // readonly voting: Voting;
     readonly voterRegistry: VoterRegistry;
-    readonly fastUpdaters: FastUpdaters;
+    readonly flareSystemManager: FlareSystemManager;
     readonly fastUpdater: FastUpdater;
-    // readonly priceOracle: PriceOracle;
-    // readonly votingManager: VotingManager;
+    readonly fastUpdateIncentiveManager: FastUpdateIncentiveManager;
+    readonly flareSystemMock: FlareSystemMock;
 }
 
-export class Web3Provider implements IVotingProvider {
+export class Web3Provider {
     private readonly logger = getLogger(Web3Provider.name);
     public readonly account: Account;
 
     private constructor(
         readonly contractAddresses: ContractAddresses,
-        // readonly firstEpochStartSec: number,
-        // readonly epochDurationSec: number,
-        // readonly firstRewardedPriceEpoch: number,
-        // readonly rewardEpochDurationInEpochs: number,
-        // readonly signingDurationSec: number,
         readonly web3: Web3,
         private contracts: TypeChainContracts,
         private config: FTSOParameters,
@@ -65,8 +39,13 @@ export class Web3Provider implements IVotingProvider {
         this.account = getAccount(this.web3, privateKey);
     }
 
-    async registerAsAVoter(epoch: number, weigh: number, addToNonce?: number) {
-        const methodCall = this.contracts.voterRegistry.methods.registerAsAVoter(epoch, toBN(weigh));
+    // only on mocked contract
+    async registerAsAVoter(epoch: number, key: SortitionKey, weight: number, addToNonce?: number) {
+        const x = "0x" + "0".repeat(64 - key.pk.x.toString(16).length) + key.pk.x.toString(16);
+        const y = "0x" + "0".repeat(64 - key.pk.y.toString(16).length) + key.pk.y.toString(16);
+
+        const newProvider: [string, string, number] = [x, y, weight];
+        const methodCall = this.contracts.flareSystemMock.methods.registerAsVoter(epoch, newProvider);
         return this.signAndFinalize(
             "RegisterAsAVoter",
             this.contracts.voterRegistry.options.address,
@@ -77,10 +56,36 @@ export class Web3Provider implements IVotingProvider {
         );
     }
 
-    async getWeight(address: string) {
-        const weight = await this.contracts.fastUpdater.methods.activeProviders(address).call();
+    // only by daemon
+    async advanceIncentive(addToNonce?: number) {
+        const methodCall = this.contracts.fastUpdateIncentiveManager.methods.advance();
+        return this.signAndFinalize(
+            "advance",
+            this.contracts.fastUpdateIncentiveManager.options.address,
+            methodCall,
+            undefined,
+            undefined,
+            addToNonce
+        );
+    }
 
-        return weight.sortitionWeight;
+    // only by daemon
+    async freeSubmitted(addToNonce?: number) {
+        const methodCall = this.contracts.fastUpdater.methods.freeSubmitted();
+        return this.signAndFinalize(
+            "freeSubmitted",
+            this.contracts.fastUpdater.options.address,
+            methodCall,
+            undefined,
+            undefined,
+            addToNonce
+        );
+    }
+
+    async getWeight(address: string) {
+        const weight = await this.contracts.fastUpdater.methods.currentSortitionWeight(address).call();
+
+        return weight;
     }
 
     async fetchCurrentPrices(feeds: number[]) {
@@ -91,37 +96,14 @@ export class Web3Provider implements IVotingProvider {
     }
 
     async getBaseSeed(): Promise<BN> {
-        const seed = await this.contracts.fastUpdaters.methods.getBaseSeed().call();
+        const seed = await this.contracts.flareSystemManager.methods.getCurrentRandom().call();
 
         return toBN(seed);
     }
+    async getCurrentScoreCutoff(): Promise<string> {
+        const cutoff = await this.contracts.fastUpdater.methods.currentScoreCutoff().call();
 
-    async getSortitionRound(blockNumber: number) {
-        const sortitionRound = await this.contracts.fastUpdater.methods.getSortitionRound(blockNumber).call();
-
-        return sortitionRound;
-    }
-
-    async registerAsProvider(key: SortitionKey, proof: Proof, addToNonce?: number) {
-        const replicate = 0; // Registration doesn't allow cherry-picking a replicate
-
-        const pubKey: [string, string] = [key.pk.x.toString(), key.pk.y.toString()];
-        const sortitionCredential: [number, [string, string], string, string] = [
-            replicate,
-            [proof.gamma.x.toString(), proof.gamma.y.toString()],
-            proof.c.toString(),
-            proof.s.toString(),
-        ];
-        const methodCall = this.contracts.fastUpdaters.methods.registerNewProvider([pubKey, sortitionCredential]);
-
-        return await this.signAndFinalize(
-            "RegisterAsProvider",
-            this.contracts.fastUpdaters.options.address,
-            methodCall,
-            undefined,
-            undefined,
-            addToNonce
-        );
+        return cutoff;
     }
     async submitUpdates(
         proof: Proof,
@@ -155,178 +137,9 @@ export class Web3Provider implements IVotingProvider {
         );
     }
 
-    // /**
-    //  * Authorizes the provided claimer account to process reward claims for the voter.
-    //  * Note: the voter account will still be the beneficiary of the reward value.
-    //  */
-    // async authorizeClaimer(claimerAddress: Address, voter: Account): Promise<any> {
-    //     const methodCall = this.contracts.votingRewardManager.methods.authorizeClaimer(claimerAddress);
-    //     return await this.signAndFinalize(
-    //         "Authorize claimer",
-    //         this.contracts.votingRewardManager.options.address,
-    //         methodCall,
-    //         0,
-    //         voter
-    //     );
-    // }
-
-    // async claimRewards(claims: RewardClaimWithProof[], beneficiary: Address): Promise<any> {
-    //     let nonce = await this.getNonce(this.account);
-    //     for (const claim of claims) {
-    //         this.logger.info(
-    //             `Calling claim reward contract with ${claim.body.amount.toString()}, using ${beneficiary}, nonce ${nonce}`
-    //         );
-    //         const methodCall = this.contracts.votingRewardManager.methods.claimReward(hexlifyBN(claim), beneficiary);
-    //         await this.signAndFinalize(
-    //             "Claim reward",
-    //             this.contracts.votingRewardManager.options.address,
-    //             methodCall,
-    //             0,
-    //             this.account,
-    //             nonce++
-    //         );
-    //     }
-    // }
-
-    // async offerRewards(offers: Offer[]): Promise<any> {
-    //     let totalAmount = toBN(0);
-    //     offers.forEach(offer => {
-    //         if (offer.currencyAddress === ZERO_ADDRESS) {
-    //             totalAmount = totalAmount.add(offer.amount);
-    //         }
-    //     });
-
-    //     const methodCall = this.contracts.votingRewardManager.methods.offerRewards(hexlifyBN(offers));
-    //     return await this.signAndFinalize(
-    //         "Offer rewards",
-    //         this.contracts.votingRewardManager.options.address,
-    //         methodCall,
-    //         totalAmount
-    //     );
-    // }
-
-    // async commit(hash: string): Promise<any> {
-    //     const methodCall = this.contracts.voting.methods.commit(hash);
-    //     return await this.signAndFinalize("Commit", this.contracts.voting.options.address, methodCall);
-    // }
-
-    // async revealBitvote(epochData: EpochData): Promise<any> {
-    //     const methodCall = this.contracts.voting.methods.revealBitvote(
-    //         epochData.random.value,
-    //         epochData.merkleRoot,
-    //         epochData.bitVote,
-    //         epochData.pricesHex
-    //     );
-    //     return await this.signAndFinalize("Reveal", this.contracts.voting.options.address, methodCall);
-    // }
-
-    // async signResult(priceEpochId: number, merkleRoot: string, signature: BareSignature): Promise<any> {
-    //     const methodCall = this.contracts.voting.methods.signResult(priceEpochId, merkleRoot, [
-    //         signature.v,
-    //         signature.r,
-    //         signature.s,
-    //     ]);
-    //     return await this.signAndFinalize("Sign result", this.contracts.voting.options.address, methodCall);
-    // }
-
-    // async finalize(priceEpochId: number, mySignatureHash: string, signatures: BareSignature[]): Promise<any> {
-    //     const methodCall = this.contracts.voting.methods.finalize(
-    //         priceEpochId,
-    //         mySignatureHash,
-    //         signatures.map(s => [s.v, s.r, s.s])
-    //     );
-    //     return await this.signAndFinalize("Finalize", this.contracts.voting.options.address, methodCall);
-    // }
-
-    // async signRewards(rewardEpoch: number, merkleRoot: string, signature: BareSignature): Promise<any> {
-    //     const methodCall = this.contracts.voting.methods.signRewards(rewardEpoch, merkleRoot, [
-    //         signature.v,
-    //         signature.r,
-    //         signature.s,
-    //     ]);
-    //     return await this.signAndFinalize("Sign rewards", this.contracts.voting.options.address, methodCall);
-    // }
-
-    // async finalizeRewards(rewardEpoch: number, mySignatureHash: string, signatures: BareSignature[]): Promise<any> {
-    //     const methodCall = this.contracts.voting.methods.finalizeRewards(
-    //         rewardEpoch,
-    //         mySignatureHash,
-    //         signatures.map(s => [s.v, s.r, s.s])
-    //     );
-    //     return await this.signAndFinalize("Finalize rewards", this.contracts.voting.options.address, methodCall);
-    // }
-
-    // async getMerkleRoot(priceEpochId: number): Promise<string> {
-    //     return await this.contracts.voting.methods.getMerkleRootForPriceEpoch(priceEpochId).call();
-    // }
-
-    // async publishPrices(epochResult: EpochResult, symbolIndices: number[]): Promise<any> {
-    //     const methodCall = this.contracts.priceOracle.methods.publishPrices(
-    //         epochResult.priceEpochId,
-    //         epochResult.encodedBulkPrices,
-    //         epochResult.encodedBulkSymbols,
-    //         epochResult.bulkPriceProof.map(p => p.value),
-    //         symbolIndices
-    //     );
-    //     return await this.signAndFinalize("Publish prices", this.contracts.priceOracle.options.address, methodCall);
-    // }
-    // async signMessage(message: string): Promise<BareSignature> {
-    //     const signature = signMessage(this.web3, message, this.account.privateKey);
-    //     return Promise.resolve(signature);
-    // }
-
-    // async signMessageWithKey(message: string, key: string = this.account.privateKey): Promise<BareSignature> {
-    //     const signature = signMessage(this.web3, message, key);
-    //     return Promise.resolve(signature);
-    // }
-
-    // async recoverSigner(message: string, signature: BareSignature): Promise<string> {
-    //     const signer = recoverSigner(this.web3, message, signature);
-    //     return Promise.resolve(signer);
-    // }
-
-    // async getVoterWeightsForRewardEpoch(rewardEpoch: number): Promise<Map<Address, BN>> {
-    //     const data = await this.contracts.voterRegistry.methods.votersForRewardEpoch(rewardEpoch).call();
-    //     const voters = data[0];
-    //     const weights = data[1].map(w => toBN(w));
-    //     const weightMap = new Map<Address, BN>();
-    //     for (let i = 0; i < voters.length; i++) {
-    //         weightMap.set(voters[i].toLowerCase(), weights[i]);
-    //     }
-    //     return weightMap;
-    // }
-
-    // async registerAsVoter(rewardEpochId: number, weight: number): Promise<any> {
-    //     const methodCall = this.contracts.voterRegistry.methods.registerAsAVoter(rewardEpochId, weight);
-    //     return await this.signAndFinalize(
-    //         "Register as voter",
-    //         this.contracts.voterRegistry.options.address,
-    //         methodCall
-    //     );
-    // }
-
     async getBlockNumber(): Promise<number> {
         return this.web3.eth.getBlockNumber();
     }
-
-    // async getBlock(blockNumber: number): Promise<BlockData> {
-    //     return await getFilteredBlock(this.web3, blockNumber, [
-    //         this.contractAddresses.voting,
-    //         this.contractAddresses.votingRewardManager,
-    //     ]);
-    // }
-
-    // get senderAddressLowercase(): string {
-    //     return this.account.address.toLowerCase();
-    // }
-
-    // async getCurrentRewardEpochId(): Promise<number> {
-    //     return +(await this.contracts.votingManager.methods.getCurrentRewardEpochId().call());
-    // }
-
-    // async getCurrentPriceEpochId(): Promise<number> {
-    //     return +(await this.contracts.votingManager.methods.getCurrentPriceEpochId().call());
-    // }
 
     public async getNonce(account: Account): Promise<number> {
         return await this.web3.eth.getTransactionCount(account.address);
@@ -369,33 +182,12 @@ export class Web3Provider implements IVotingProvider {
             return this.web3.eth.sendSignedTransaction(signedTx.rawTransaction!);
         };
 
-        const receiptOrError: Error | TransactionReceipt = await retryWithTimeout(async () => {
-            try {
-                return await sendTx();
-            } catch (e: unknown) {
-                const error = asError(e);
-                this.logger.info(`[${label}] Transaction failed, raw error: ${JSON.stringify(e)}`);
-
-                if (isRevertTxError(error)) {
-                    // Don't retry if transaction has been reverted, propagate error result.
-                    return this.getRevertReasonError(label, fnToEncode, from);
-                } else if (isTransientTxError(error)) {
-                    // Retry on transient errors
-                    this.logger.info(`[${label}] Transaction error, will retry: ${error.message}`);
-                    throw error;
-                } else {
-                    // Don't retry, propagate unexpected errors.
-                    return new Error(`[${label}] Unexpected error sending tx`, { cause: error });
-                }
-            }
-        }, 20_000);
-
-        if (receiptOrError instanceof Error) throw receiptOrError as Error;
+        const receipt: TransactionReceipt = await promiseWithTimeout(sendTx(), 20000);
 
         const isTxFinalized = async () => (await this.getNonce(from)) > txNonce;
         await retryPredicate(isTxFinalized, 8, 1000);
 
-        return receiptOrError as TransactionReceipt;
+        return receipt;
     }
 
     /**
@@ -434,29 +226,43 @@ export class Web3Provider implements IVotingProvider {
 
     static async create(contractAddresses: ContractAddresses, web3: Web3, config: FTSOParameters, privateKey: string) {
         const contracts = {
-            // votingRewardManager: await loadContract<VotingRewardManager>(
-            //     web3,
-            //     contractAddresses.votingRewardManager,
-            //     "VotingRewardManager"
-            // ),
-            // voting: await loadContract<Voting>(web3, contractAddresses.voting, "Voting"),
             voterRegistry: await loadContract<VoterRegistry>(web3, contractAddresses.voterRegistry, "VoterRegistry"),
-            fastUpdaters: await loadContract<FastUpdaters>(web3, contractAddresses.fastUpdaters, "FastUpdaters"),
+            flareSystemManager: await loadContract<FlareSystemManager>(
+                web3,
+                contractAddresses.flareSystemManager,
+                "FlareSystemManager"
+            ),
             fastUpdater: await loadContract<FastUpdater>(web3, contractAddresses.fastUpdater, "FastUpdater"),
-            // priceOracle: await loadContract<PriceOracle>(web3, contractAddresses.priceOracle, "PriceOracle"),
-            // votingManager: await loadContract<VotingManager>(web3, contractAddresses.votingManager, "VotingManager"),
-            // voting: await loadContract<Voting>(web3, contractAddresses.voting, "Voting"),
+            flareSystemMock: await loadContract<FlareSystemMock>(
+                web3,
+                contractAddresses.flareSystemManager,
+                "FlareSystemMock"
+            ),
+            fastUpdateIncentiveManager: await loadContract<FastUpdateIncentiveManager>(
+                web3,
+                contractAddresses.fastUpdateIncentiveManager,
+                "FastUpdateIncentiveManager"
+            ),
         };
-
-        // const firstEpochStartSec = +(await contracts.votingManager.methods.BUFFER_TIMESTAMP_OFFSET().call());
-        // const epochDurationSec = +(await contracts.votingManager.methods.BUFFER_WINDOW().call());
-        // const firstRewardedPriceEpoch = +(await contracts.votingManager.methods.firstRewardedPriceEpoch().call());
-        // const rewardEpochDurationInEpochs = +(await contracts.votingManager.methods
-        //     .rewardEpochDurationInEpochs()
-        //     .call());
-        // const signingDurationSec = +(await contracts.votingManager.methods.signingDurationSec().call());
 
         const provider = new Web3Provider(contractAddresses, web3, contracts, config, privateKey);
         return provider;
+    }
+
+    async waitForNewEpoch(epochLen: number) {
+        const blockNum = await this.getBlockNumber();
+        const newEpochBlockNum = (Math.floor(blockNum / epochLen) + 1) * epochLen;
+
+        await this.waitForBlock(newEpochBlockNum);
+    }
+
+    async waitForBlock(minedBlockNum: number) {
+        for (;;) {
+            const blockNum = await this.getBlockNumber();
+            if (blockNum >= minedBlockNum) {
+                return;
+            }
+            await sleepFor(1000);
+        }
     }
 }

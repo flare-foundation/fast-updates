@@ -17,72 +17,107 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
 
     // Bit length tests
 
-    it("should have 16 bit Scale values", async() => {
+    it("should have 16 bit Scale values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c1 = await fpaInstance.identityScaleTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identityScaleTest(BigInt(2) ** BigInt(16));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identityScaleTest(BigInt(2) ** BigInt(16));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
-    it("should have 16 bit Precision values", async() => {
+    it("should have 16 bit Precision values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c1 = await fpaInstance.identityPrecisionTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identityPrecisionTest(BigInt(2) ** BigInt(16));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identityPrecisionTest(BigInt(2) ** BigInt(16));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
-    it("should have 16 bit SampleSize values", async() => {
+    it("should have 16 bit SampleSize values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c1 = await fpaInstance.identitySampleSizeTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identitySampleSizeTest(BigInt(2) ** BigInt(16));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identityPrecisionTest(BigInt(2) ** BigInt(16));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
-    it("should have 16 bit Range values", async() => {
+    it("should have 16 bit Range values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c1 = await fpaInstance.identitySampleSizeTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identitySampleSizeTest(BigInt(2) ** BigInt(16));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identitySampleSizeTest(BigInt(2) ** BigInt(16));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
-    it("should have 32 bit Price values", async() => {
+    it("should have 32 bit Price values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(32) - BigInt(1));
         const c1 = await fpaInstance.identityPriceTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identityPriceTest(BigInt(2) ** BigInt(32));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identityPriceTest(BigInt(2) ** BigInt(32));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
-    it("should have 16 bit Fractional values", async() => {
+    it("should have 16 bit Fractional values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c1 = await fpaInstance.identityFractionalTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identityFractionalTest(BigInt(2) ** BigInt(16));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identityFractionalTest(BigInt(2) ** BigInt(16));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
-    it("should have 240 bit Fee values", async() => {
+    it("should have 240 bit Fee values", async () => {
         const x = RandInt(BigInt(2) ** BigInt(240) - BigInt(1));
         const c1 = await fpaInstance.identityFeeTest(x);
 
         expect(x).to.equal(c1);
 
-        const c2 = fpaInstance.identityFeeTest(BigInt(2) ** BigInt(240));
-        expect(c2).to.eventually.throw();
+        let c2;
+        try {
+            c2 = await fpaInstance.identityFeeTest(BigInt(2) ** BigInt(240));
+        } catch (err) {
+            expect(err).to.be.not.empty;
+        }
+        expect(c2).to.be.undefined;
     });
 
     // Arithmetic identity tests
-    
+
     it("should have one as additive one", async () => {
         const x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
         const c = await fpaInstance.oneTest(x);
@@ -108,8 +143,8 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
     // Addition/subtraction tests
 
     it("should add and subtract SampleSize values", async () => {
-        var x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
-        var y = RandInt(BigInt(2) ** BigInt(16) - BigInt(1) - x);
+        let x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
+        let y = RandInt(BigInt(2) ** BigInt(16) - BigInt(1) - x);
         if (x < y) {
             const z = x;
             x = y;
@@ -123,8 +158,8 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
     });
 
     it("should add and subtract Range values", async () => {
-        var x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
-        var y = RandInt(BigInt(2) ** BigInt(16) - BigInt(1) - x);
+        let x = RandInt(BigInt(2) ** BigInt(16) - BigInt(1));
+        let y = RandInt(BigInt(2) ** BigInt(16) - BigInt(1) - x);
         if (x < y) {
             const z = x;
             x = y;
@@ -138,8 +173,8 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
     });
 
     it("should add and subtract Fee values", async () => {
-        var x = RandInt(BigInt(2) ** BigInt(240) - BigInt(1));
-        var y = RandInt(BigInt(2) ** BigInt(240) - BigInt(1) - x);
+        let x = RandInt(BigInt(2) ** BigInt(240) - BigInt(1));
+        let y = RandInt(BigInt(2) ** BigInt(240) - BigInt(1) - x);
         if (x < y) {
             const z = x;
             x = y;
@@ -156,139 +191,139 @@ contract(`FixedPointArithmetic.sol; ${getTestFile(__filename)}`, async accounts 
 
     it("should multiply and divide Scale values", async () => {
         // Power is 13 here to prevent the product from overflowing
-        const xI = Math.floor(2**15 + (Math.random() * 2**13))
-        const yI = Math.floor(2**15 + (Math.random() * 2**13))
+        const xI = Math.floor(2 ** 15 + Math.random() * 2 ** 13);
+        const yI = Math.floor(2 ** 15 + Math.random() * 2 ** 13);
 
-        const x = xI / 2**15;
-        const y = yI / 2**15;
+        const x = xI / 2 ** 15;
+        const y = yI / 2 ** 15;
 
-        const xy1 = Math.floor((x * y) * 2**15) / 2**15
-        const xy2 = Math.floor((x / y) * 2**15) / 2**15
+        const xy1 = Math.floor(x * y * 2 ** 15) / 2 ** 15;
+        const xy2 = Math.floor((x / y) * 2 ** 15) / 2 ** 15;
 
         const c = await fpaInstance.mulScaleTest(xI, yI);
 
-        expect(c[0] / 2**15).to.equal(xy1);
-        expect(c[1] / 2**15).to.equal(xy2);
+        expect(c[0] / 2 ** 15).to.equal(xy1);
+        expect(c[1] / 2 ** 15).to.equal(xy2);
     });
     it("should multiply Price and Scale values", async () => {
-        const x = Math.floor(Math.random() * 2**31);
-        const yI = Math.floor(2**15 + Math.random() * 2**15);
-        const y = yI / 2**15;
+        const x = Math.floor(Math.random() * 2 ** 31);
+        const yI = Math.floor(2 ** 15 + Math.random() * 2 ** 15);
+        const y = yI / 2 ** 15;
 
         const c = await fpaInstance.mulPriceScaleTest(x, yI);
 
         expect(c).to.equal(Math.floor(x * y));
     });
     it("should multiply Fee and Range values", async () => {
-        const x = Math.floor(Math.random() * 2**32);
-        const yI = Math.floor(Math.random() * 2**16)
-        const y = yI / 2**8;
+        const x = Math.floor(Math.random() * 2 ** 32);
+        const yI = Math.floor(Math.random() * 2 ** 16);
+        const y = yI / 2 ** 8;
 
         const c = await fpaInstance.mulFeeRangeTest(x, yI);
 
         expect(c).to.equal(Math.floor(x * y));
-    })
+    });
     it("should multiply Fractional and Fee values", async () => {
-        const xI = Math.floor(Math.random() * 2**16)
-        const x = xI / 2**16;
-        const y = Math.floor(Math.random() * 2**32);
+        const xI = Math.floor(Math.random() * 2 ** 16);
+        const x = xI / 2 ** 16;
+        const y = Math.floor(Math.random() * 2 ** 32);
 
         const c = await fpaInstance.mulFractionalFeeTest(xI, y);
 
         expect(c).to.equal(Math.floor(x * y));
-    })
+    });
     it("should multiply Fractional and SampleSize values", async () => {
-        const xI = Math.floor(Math.random() * 2**16)
-        const x = xI / 2**16;
-        const yI = Math.floor(Math.random() * 2**16);
-        const y = yI / 2**8;
+        const xI = Math.floor(Math.random() * 2 ** 16);
+        const x = xI / 2 ** 16;
+        const yI = Math.floor(Math.random() * 2 ** 16);
+        const y = yI / 2 ** 8;
 
-        const xy = Math.floor(x * y * 2**8) / 2**8
+        const xy = Math.floor(x * y * 2 ** 8) / 2 ** 8;
 
         const c = await fpaInstance.mulFractionalSampleSizeTest(xI, yI);
 
-        expect(c / 2**8).to.equal(xy);
-    })
+        expect(c / 2 ** 8).to.equal(xy);
+    });
     it("should divide Range values", async () => {
-        const yI = Math.floor(Math.random() * 2**16)
-        const y = yI / 2**8;
+        const yI = Math.floor(Math.random() * 2 ** 16);
+        const y = yI / 2 ** 8;
         const xI = Math.floor(Math.random() * yI);
-        const x = xI / 2**8;
+        const x = xI / 2 ** 8;
 
-        const xy = Math.floor((x / y) * 2**16) / 2**16
+        const xy = Math.floor((x / y) * 2 ** 16) / 2 ** 16;
 
         const c = await fpaInstance.divRangeTest(xI, yI);
 
-        expect(c / 2**16).to.equal(xy);
-    })
+        expect(c / 2 ** 16).to.equal(xy);
+    });
     it("should divide Fee values", async () => {
-        const y = Math.floor(Math.random() * 2**32)
+        const y = Math.floor(Math.random() * 2 ** 32);
         const x = Math.floor(Math.random() * y);
 
-        const xy = Math.floor((x / y) * 2**16) / 2**16
+        const xy = Math.floor((x / y) * 2 ** 16) / 2 ** 16;
 
         const c = await fpaInstance.divFeeTest(x, y);
 
-        expect(c / 2**16).to.equal(xy);
-    })
+        expect(c / 2 ** 16).to.equal(xy);
+    });
     it("should divide Range and SampleSize values", async () => {
-        const yI = Math.floor(Math.random() * 2**16)
-        const y = yI / 2**8;
+        const yI = Math.floor(Math.random() * 2 ** 16);
+        const y = yI / 2 ** 8;
         const xI = Math.floor(Math.random() * y);
-        const x = xI / 2**8;
+        const x = xI / 2 ** 8;
 
-        const xy = Math.floor((x / y) * 2**15) / 2**15
+        const xy = Math.floor((x / y) * 2 ** 15) / 2 ** 15;
 
         const c = await fpaInstance.divRangeSampleSizeTest(xI, yI);
 
-        expect(c / 2**15).to.equal(xy);
-    })
+        expect(c / 2 ** 15).to.equal(xy);
+    });
     it("should divide Price and Scale values", async () => {
-        const x = Math.floor(Math.random() * 2**32);
-        const yI = Math.floor(2**15 + Math.random() * 2**15);
-        const y = yI / 2**15;
+        const x = Math.floor(Math.random() * 2 ** 32);
+        const yI = Math.floor(2 ** 15 + Math.random() * 2 ** 15);
+        const y = yI / 2 ** 15;
 
         const c = await fpaInstance.divPriceScaleTest(x, yI);
 
-        expect(c).to.equal(Math.floor(x/y));
-    })
+        expect(c).to.equal(Math.floor(x / y));
+    });
 
     // Comparison and conversion tests
 
     it("should convert Precision to Scale", async () => {
-        const xI = Math.floor(Math.random() * 2**15)
-        const x = xI / 2**15
+        const xI = Math.floor(Math.random() * 2 ** 15);
+        const x = xI / 2 ** 15;
 
         const c = await fpaInstance.scaleWithPrecisionTest(xI);
 
-        expect(c / 2**15).to.equal(x + 1);
-    })
+        expect(c / 2 ** 15).to.equal(x + 1);
+    });
     it("should compare Range values", async () => {
-        const xI = Math.floor(Math.random() * 2**16)
-        const x = xI / 2**8
-        const yI = Math.floor(Math.random() * 2**16)
-        const y = yI / 2**8
+        const xI = Math.floor(Math.random() * 2 ** 16);
+        const x = xI / 2 ** 8;
+        const yI = Math.floor(Math.random() * 2 ** 16);
+        const y = yI / 2 ** 8;
 
-        const c = await fpaInstance.lessThanRangeTest(xI, yI)
+        const c = await fpaInstance.lessThanRangeTest(xI, yI);
 
-        expect(c).to.equal(x < y)
-    })
+        expect(c).to.equal(x < y);
+    });
     it("should compare Fee values", async () => {
-        const x = Math.floor(Math.random() * 2**32)
-        const y = Math.floor(Math.random() * 2**32)
+        const x = Math.floor(Math.random() * 2 ** 32);
+        const y = Math.floor(Math.random() * 2 ** 32);
 
-        const c = await fpaInstance.lessThanFeeTest(x, y)
+        const c = await fpaInstance.lessThanFeeTest(x, y);
 
-        expect(c).to.equal(x < y)
-    })
+        expect(c).to.equal(x < y);
+    });
     it("should compare Range and SampleSize values", async () => {
-        const xI = Math.floor(Math.random() * 2**16)
-        const x = xI / 2**8
-        const yI = Math.floor(Math.random() * 2**16)
-        const y = yI / 2**8
+        const xI = Math.floor(Math.random() * 2 ** 16);
+        const x = xI / 2 ** 8;
+        const yI = Math.floor(Math.random() * 2 ** 16);
+        const y = yI / 2 ** 8;
 
-        const c = await fpaInstance.lessThanRangeSampleSizeTest(xI, yI)
+        const c = await fpaInstance.lessThanRangeSampleSizeTest(xI, yI);
 
-        expect(c).to.equal(x < y)
-    })
+        expect(c).to.equal(x < y);
+    });
 });

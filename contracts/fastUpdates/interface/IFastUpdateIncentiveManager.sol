@@ -7,7 +7,7 @@ abstract contract IFastUpdateIncentiveManager {
     function getExpectedSampleSize() view external virtual returns(FPA.SampleSize);
     function getPrecision() view external virtual returns(FPA.Precision);
     function getRange() view external virtual returns(FPA.Range);
-    function getIncentiveDuration() view external virtual returns(uint);
+    function getScale() view external virtual returns(FPA.Scale);
 
     uint public incentiveDuration;
 

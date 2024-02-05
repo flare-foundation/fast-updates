@@ -43,10 +43,9 @@ contract(`FastUpdateIncentiveManager.sol; ${getTestFile(__filename)}`, async () 
         // precision scaled for 2^(-15)
         expect(precision).to.equal(Math.floor((BASE_RANGE / BASE_SAMPLE_SIZE) * 2 ** 15));
     });
-    it("should get next update parameters", async () => {
-        const param = await fastUpdateIncentiveManager.nextUpdateParameters.call();
-        expect(param[0]).to.equal(BASE_SAMPLE_SIZE);
-        expect(param[1]).to.equal(Math.floor(2 ** 15 + (BASE_RANGE / BASE_SAMPLE_SIZE) * 2 ** 15));
+    it("should get scale", async () => {
+        const scale = await fastUpdateIncentiveManager.getScale();
+        expect(scale).to.equal(Math.floor(2 ** 15 + (BASE_RANGE / BASE_SAMPLE_SIZE) * 2 ** 15));
     });
 
     it("should offer incentive", async () => {

@@ -1,5 +1,6 @@
 FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y sudo curl python3 build-essential
+RUN apt-get update
+RUN apt-get install -y sudo curl python3 build-essential
 
 ENV NVM_DIR /usr/local/nvm
 ENV NODE_VERSION v18.19.0
@@ -12,13 +13,10 @@ ENV PATH $NODE_PATH:$PATH
 RUN npm install -g yarn
 ADD . /fast-updates
 WORKDIR /fast-updates
-RUN npm cache clean --force
 RUN rm -r node_modules || true
 RUN rm yarn.lock || true
-RUN apt-get install -y build-essential
 RUN yarn install
 
 RUN yarn c
 ENV CHAIN_CONFIG="docker"
-ENV DEPLOYER_PRIVATE_KEY="0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122"
-ENTRYPOINT sleep 10 && yarn hardhat run-admin-daemon --network docker
+ENTRYPOINT [] 

@@ -70,7 +70,7 @@ contract TestBn256 {
         c = Bn256.scalarMultiply(a, s);
     }
 
-    function publicG1Compress(Bn256.G1Point memory a) public view returns (bytes32) {
+    function publicG1Compress(Bn256.G1Point memory a) public pure returns (bytes32) {
         bytes32 c = Bn256.g1Compress(a);
         return c;
     }

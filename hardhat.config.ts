@@ -21,8 +21,7 @@ dotenv.config();
 
 task("deploy-contracts", `Deploys contracts and generates a file with addresses at ${OUTPUT_FILE}.`) // prettier-ignore
     .setAction(async (_args, hre, _runSuper) => {
-        const parameters = loadFTSOParameters();
-        await deployContracts(hre, parameters);
+        await deployContracts(hre);
     });
 
 task("run-admin-daemon", `Does admin tasks`) // prettier-ignore
@@ -34,7 +33,7 @@ task("run-admin-daemon", `Does admin tasks`) // prettier-ignore
 task("chain-config", `Configures mining times`) // prettier-ignore
     .setAction(async (_args, hre, _runSuper) => {
         const parameters = loadFTSOParameters();
-        await chainConfig(hre, parameters);
+        await chainConfig(parameters);
     });
 
 // Config

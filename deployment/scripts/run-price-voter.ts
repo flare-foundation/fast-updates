@@ -1,17 +1,14 @@
 import { readFileSync } from "fs";
-import { FTSOClient } from "../../src/FTSOClient";
 import { Web3Provider } from "../../src/providers/Web3Provider";
 import { loadFTSOParameters } from "../config/FTSOParameters";
-import { ContractAddresses, OUTPUT_FILE, loadAccounts } from "../tasks/common";
+import { FEEDS, EPOCH_LEN, ContractAddresses, OUTPUT_FILE, loadAccounts } from "../tasks/common";
 import { getLogger, setGlobalLogFile } from "../../src/utils/logger";
 import { getWeb3 } from "../../src/utils/web3";
 import { PriceVoter } from "../../src/PriceVoter";
 import { PriceFeedProvider } from "../../src/price-feeds/PriceFeedProvider";
 
-// const TEST_EPOCH = 1;
-const EPOCH_LEN = 10;
 const WEIGHT = 1000;
-const FEEDS = [0, 1, 2, 3, 4, 5];
+const logger = getLogger("price-voter");
 
 async function main() {
     const myId = +process.argv[2];
@@ -24,7 +21,7 @@ async function main() {
     const web3 = getWeb3(parameters.rpcUrl.toString());
 
     const contractAddresses = loadContracts();
-    getLogger("price-voter").info(`Initializing data provider ${myId}, connecting to ${parameters.rpcUrl}`);
+    logger.info(`Initializing data provider ${myId}, connecting to ${parameters.rpcUrl}`);
 
     let privateKey: string;
     let address: string;
@@ -36,30 +33,28 @@ async function main() {
         privateKey = accounts[myId].privateKey;
         address = accounts[myId].address;
     }
+    // console.log(`contract addresses`, contractAddresses);
     const web3Provider = await Web3Provider.create(contractAddresses, web3, parameters, privateKey);
 
-    const priceFeedProvider = new PriceFeedProvider(6);
+    const priceFeedProvider = new PriceFeedProvider(FEEDS.length);
 
     const priceVoter = new PriceVoter(web3Provider, priceFeedProvider, address, EPOCH_LEN, WEIGHT);
-    const currentBlock = await web3Provider.getBlockNumber();
+    let currentBlock = await web3Provider.getBlockNumber();
+    // if the reward epoch is just changing, wait
+    if (currentBlock % EPOCH_LEN == 0 || (currentBlock + 1) % EPOCH_LEN == 0 || (currentBlock + 2) % EPOCH_LEN == 0) {
+        await web3Provider.waitForBlock(currentBlock + 3);
+        currentBlock = await web3Provider.getBlockNumber();
+    }
     const nextEpoch = Math.floor((currentBlock + 1) / EPOCH_LEN) + 1;
 
     const receipt1 = priceVoter.registerAsVoter(nextEpoch, WEIGHT);
-    const receipt2 = priceVoter.registerAsProvider(1);
 
-    let receipt = await receipt1;
-    console.log(
-        "registered as a voter for epoch",
-        nextEpoch,
-        "in block",
-        receipt.blockNumber,
-        "status",
-        receipt.status
+    const receipt = await receipt1;
+    logger.info(
+        `registered as a voter for epoch ${nextEpoch} in block ${receipt.blockNumber} status ${receipt.status}`
     );
-    receipt = await receipt2;
-    console.log("registered as a provider of Fast Updates", "in block", receipt.blockNumber, "status", receipt.status);
 
-    await priceVoter.run(FEEDS);
+    await priceVoter.run();
 
     process.exit(0);
 }
@@ -71,7 +66,7 @@ function loadContracts(): ContractAddresses {
 }
 
 main().catch(e => {
-    console.error("Price voter error, exiting", e);
+    logger.error(`Price voter error, exiting ${e}`);
     getLogger("price-voter").error(e);
     process.exit(1);
 });

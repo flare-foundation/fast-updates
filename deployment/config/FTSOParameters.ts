@@ -1,9 +1,8 @@
 import { readFileSync } from "fs";
-import { Feed } from "../../src/protocol/voting-types";
 import * as dotenv from "dotenv";
 import { URL } from "url";
 import BN from "bn.js";
-import { toBN } from "../../src/protocol/utils/voting-utils";
+import { toBN } from "../../src/utils/voting-utils";
 dotenv.config();
 
 export interface FTSOParameters {
@@ -11,7 +10,6 @@ export interface FTSOParameters {
     rpcUrl: URL;
     gasLimit: BN;
     gasPriceMultiplier: number;
-    symbols: Feed[];
 }
 
 function loadParameters(filename: string): FTSOParameters {

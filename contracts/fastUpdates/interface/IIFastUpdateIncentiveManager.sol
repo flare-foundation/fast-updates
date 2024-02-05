@@ -33,16 +33,13 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager {
         rangeIncreasePrice = _price;
     }
 
-    function setIncentiveDuration(uint _duration) public virtual;
-
-    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip, uint _dur) {
+    constructor(address payable _rp, FPA.SampleSize _bss, FPA.Range _br, FPA.SampleSize _sil, FPA.Fee _rip) {
         setRewardPool(_rp);
         setBaseSampleSize(_bss);
         setBaseRange(_br);
         setSampleIncreaseLimit(_sil);
         setRangeIncreasePrice(_rip);
-        setIncentiveDuration(_dur);
     }
 
-    function nextUpdateParameters() public virtual returns(FPA.SampleSize newSampleSize, FPA.Scale newScale);
+    function advance() public virtual;
 }
