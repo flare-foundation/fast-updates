@@ -1,0 +1,11 @@
+image: node:18.17.1
+
+stages:
+    - test
+
+test_core:
+    stage: test
+    script:
+        - yarn install
+        - yarn c
+        - yarn test

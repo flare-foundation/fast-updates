@@ -1,9 +1,7 @@
 import { getLogger } from "./utils/logger";
-import { sleepFor } from "./utils/time";
 import { Web3Provider } from "./providers/Web3Provider";
 import { KeyGen } from "./Sortition";
-import { VerifiableRandomness, Proof } from "./Sortition";
-import { TransactionReceipt } from "web3-core";
+import { VerifiableRandomness, Randomness, Proof } from "./Sortition";
 import { PriceFeedProvider } from "./price-feeds/PriceFeedProvider";
 
 export class PriceVoter {
@@ -13,6 +11,7 @@ export class PriceVoter {
     private epochLen: number;
     private weight: number;
     private priceFeedProvider: PriceFeedProvider;
+    private lastRegisteredEpoch: number;
 
     constructor(
         private readonly provider: Web3Provider,
@@ -26,18 +25,13 @@ export class PriceVoter {
         this.address = address;
         this.epochLen = epochLen;
         this.weight = weight;
+        this.lastRegisteredEpoch = -1;
     }
 
-    async registerAsVoter(epoch: number, weight: number, forceNonce?: number) {
-        return await this.provider.registerAsAVoter(epoch, weight, forceNonce);
-    }
-
-    async registerAsProvider(forceNonce?: number) {
-        const baseSeed = await this.provider.getBaseSeed();
-        const replicate = BigInt(0); // Registration doesn't allow cherry-picking a replicate
-        const proof: Proof = VerifiableRandomness(this.key, BigInt(baseSeed.toString()), replicate);
-
-        return await this.provider.registerAsProvider(this.key, proof, forceNonce);
+    async registerAsVoter(epoch: number, weight: number, addToNonce?: number) {
+        const receipt = await this.provider.registerAsAVoter(epoch, this.key, weight, addToNonce);
+        this.lastRegisteredEpoch = epoch;
+        return receipt;
     }
 
     async getWeight(address: string) {
@@ -52,103 +46,96 @@ export class PriceVoter {
         return await this.provider.fetchCurrentPrices(feeds);
     }
 
-    async run(feeds: number[]) {
-        console.log("waiting for new epoch");
-        await this.waitForNewEpoch();
+    async run() {
+        this.logger.info("waiting for a new epoch");
+        await this.provider.waitForNewEpoch(this.epochLen);
 
         let myWeight: number = 0;
-        for (;;) {
-            let addToNonce = 0;
-            const blockNum = await this.provider.getBlockNumber();
+        let currentRandom: bigint = BigInt(0);
 
-            let voterReceipt: Promise<TransactionReceipt>;
-            let providerReceipt: Promise<TransactionReceipt>;
-            const updateReceipts: Promise<TransactionReceipt>[] = [];
-            let receipt: TransactionReceipt = <TransactionReceipt>{};
-            if ((blockNum + 1) % this.epochLen == 0) {
-                console.log("new epoch", (blockNum + 1) / this.epochLen);
+        for (;;) {
+            const blockNum = await this.provider.getBlockNumber();
+            const epoch = Math.floor((blockNum + 1) / this.epochLen);
+
+            if (blockNum % this.epochLen >= this.epochLen - 4) {
+                if (epoch + 1 > this.lastRegisteredEpoch) {
+                    const status = await this.reRegister(epoch);
+                    if (status) {
+                        await this.provider.waitForNewEpoch(this.epochLen);
+                    } else {
+                        await this.provider.waitForBlock(blockNum + 1);
+                    }
+                    continue;
+                }
+            }
+
+            if (blockNum % this.epochLen == 0) {
                 myWeight = Number(await this.getMyWeight());
-                console.log("my weight in this epoch weight", myWeight);
-            }
-
-            const currentPrices = await this.fetchCurrentPrices(feeds);
-            console.log("current prices", currentPrices);
-
-            const sortitionRound = await this.provider.getSortitionRound(blockNum);
-
-            for (let rep = 0; rep < myWeight; rep++) {
-                const proof: Proof = VerifiableRandomness(this.key, BigInt(sortitionRound.seed), BigInt(rep));
-
-                if (proof.gamma.x < BigInt(sortitionRound.cutoff)) {
-                    const deltas: [string[], string] = this.priceFeedProvider.getFeed();
-                    console.log(
-                        "submitting",
-                        deltas[0][0].slice(2, 2 + Math.ceil(this.priceFeedProvider.numFeeds / 2)),
-                        rep,
-                        "for block",
-                        blockNum
-                    );
-
-                    updateReceipts.push(this.provider.submitUpdates(proof, rep, deltas, blockNum, addToNonce));
-                    addToNonce++;
-                }
-                if (updateReceipts.length >= 2) {
-                    break;
-                }
-            }
-
-            if ((blockNum + 1) % this.epochLen == 0) {
-                // register for the next epoch
-                const nextEpoch = (blockNum + 1) / this.epochLen + 1;
-                voterReceipt = this.registerAsVoter(nextEpoch, this.weight, addToNonce);
-                addToNonce++;
-
-                providerReceipt = this.registerAsProvider(addToNonce);
-                addToNonce++;
-
-                receipt = await voterReceipt;
-                console.log(
-                    "registered again, now for epoch",
-                    nextEpoch,
-                    "in block",
-                    receipt.blockNumber,
-                    "status",
-                    receipt.status
-                );
-                receipt = await providerReceipt;
-                console.log(
-                    "registered as a provider for the next epoch",
-                    "in block",
-                    receipt.blockNumber,
-                    "status",
-                    receipt.status
+                currentRandom = BigInt((await this.provider.getBaseSeed()).toString());
+                this.logger.info(
+                    `new epoch ${epoch}, my weight in this epoch weight: ${myWeight}, current random: ${currentRandom}`
                 );
             }
 
-            for (let i = 0; i < updateReceipts.length; i++) {
-                const updateReceipt = updateReceipts[i];
-                const receipt = await updateReceipt;
-                console.log("update", "in block", receipt.blockNumber, "status", receipt.status);
-            }
+            await this.tryToSubmitUpdates(myWeight, blockNum, currentRandom);
 
-            await this.waitForBlock(blockNum + 1);
+            await this.provider.waitForBlock(blockNum + 1);
         }
     }
 
-    async waitForNewEpoch() {
-        const blockNum = await this.provider.getBlockNumber();
-        const newEpochBlockNum = (Math.floor(blockNum / this.epochLen) + 1) * this.epochLen;
+    async tryToSubmitUpdates(myWeight: number, blockNum: number, seed: bigint) {
+        let addToNonce = 0;
+        const cutoff = await this.provider.getCurrentScoreCutoff();
 
-        await this.waitForBlock(newEpochBlockNum - 1);
+        for (let rep = 0; rep < myWeight; rep++) {
+            const r: bigint = Randomness(this.key, seed, BigInt(blockNum), BigInt(rep));
+
+            const newBlockNum = await this.provider.getBlockNumber();
+            if (newBlockNum > blockNum) {
+                // console.log("time is up for block", blockNum, "got to rep", rep);
+                break;
+            }
+
+            if (r < BigInt(cutoff)) {
+                const proof: Proof = VerifiableRandomness(this.key, seed, BigInt(blockNum), BigInt(rep));
+
+                const deltas: [[string[], string], string] = this.priceFeedProvider.getFeed();
+                this.logger.info(`submitting update ${deltas[1]} with rep ${rep} for block ${blockNum}`);
+                this.provider
+                    .submitUpdates(proof, rep, deltas[0], blockNum, addToNonce)
+                    .then(receipt => {
+                        const status = receipt.status ? "successful" : "fail";
+
+                        this.logger.info(`update ${status} in block ${receipt.blockNumber}`);
+                    })
+                    .catch(error => {
+                        this.logger.error(`failed to submit updates ${error}`);
+                    });
+                addToNonce++;
+            }
+        }
     }
 
-    async waitForBlock(minedBlockNum: number) {
-        for (;;) {
-            const blockNum = await this.provider.getBlockNumber();
-            if (blockNum >= minedBlockNum) {
-                return;
-            }
-            await sleepFor(1000);
-        }
+    async reRegister(epoch: number) {
+        // console.log("end of epoch procedure");
+        let status = true;
+
+        // register for the next epoch
+        const promise = this.registerAsVoter(epoch + 1, this.weight)
+            .then(receipt => {
+                this.logger.info(
+                    `registered again, now for epoch ${epoch + 1} in block ${receipt.blockNumber} status: ${
+                        receipt.status
+                    }`
+                );
+            })
+            .catch(error => {
+                this.logger.error(`failed to register as a voter for the new epoch ${error}`);
+                status = false;
+            });
+
+        await promise;
+
+        return status;
     }
 }

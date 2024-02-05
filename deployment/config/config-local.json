@@ -2,10 +2,5 @@
   "governancePrivateKey": "<set in .env>",
   "rpcUrl": "ws://127.0.0.1:8545/",
   "gasLimit": "2500000",
-  "gasPriceMultiplier": 1.2,
-  "symbols": [
-    { "offerSymbol": "ETH", "quoteSymbol": "USDT" },
-    { "offerSymbol": "BTC", "quoteSymbol": "USDT" },
-    { "offerSymbol": "BCH", "quoteSymbol": "USDT" }
-  ]
+  "gasPriceMultiplier": 1.2
 }

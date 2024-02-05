@@ -1,18 +1,14 @@
-import { loadAccounts } from "../tasks/common";
 import { getWeb3 } from "../../src/utils/web3";
-import { ChildProcess, execSync, spawn } from "child_process";
 import { retry } from "../../src/utils/retry";
-import { sleepFor } from "../../src/utils/time";
 import { promisify } from "util";
 import Web3 from "web3";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { FTSOParameters } from "../config/FTSOParameters";
 
 /**
  * This script is used to run a local simulation of the FTSO on the local hardhat network.
  * It deploys contracts and starts a cluster of data providers.
  */
-export async function chainConfig(hre: HardhatRuntimeEnvironment, parameters: FTSOParameters) {
+export async function chainConfig(parameters: FTSOParameters) {
     const web3 = await retry(() => getWeb3(parameters.rpcUrl.toString()), 3, 1000);
     await setIntervalMining(web3, 5000);
 }

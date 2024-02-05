@@ -16,12 +16,15 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
     it("should generate a verifiable randomness", async () => {
         const key: SortitionKey = KeyGen();
         const seed = RandInt(bn254.CURVE.n);
+        const blockNum = BigInt(await web3.eth.getBlockNumber());
         const replicate = RandInt(bn254.CURVE.n);
-        const proof: Proof = VerifiableRandomness(key, seed, replicate);
+        const proof: Proof = VerifiableRandomness(key, seed, blockNum, replicate);
         const pubKey = [key.pk.x, key.pk.y];
         const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
 
-        const check = await sortition.testVerifySortitionProof(seed, pubKey, sortitionCredential);
+        const sortitionState = [seed, blockNum, 0, 0, pubKey];
+
+        const check = await sortition.testVerifySortitionProof(sortitionState, sortitionCredential);
 
         expect(check).to.equal(true);
     });
@@ -31,18 +34,17 @@ contract(`Sortition.sol; ${getTestFile(__filename)}`, async accounts => {
         for (;;) {
             const seed: bigint = RandInt(bn254.CURVE.n);
             const replicate = RandInt(bn254.CURVE.n);
+            const blockNum = BigInt(await web3.eth.getBlockNumber());
             const weight = replicate + BigInt(1);
 
-            const proof: Proof = VerifiableRandomness(key, seed, replicate);
+            const proof: Proof = VerifiableRandomness(key, seed, blockNum, replicate);
             const sortitionRound = [true, seed, scoreCutoff];
             const pubKey = [key.pk.x, key.pk.y];
             const sortitionCredential = [replicate, [proof.gamma.x, proof.gamma.y], proof.c, proof.s];
-            const check = await sortition.testVerifySortitionCredential(
-                sortitionRound,
-                weight,
-                pubKey,
-                sortitionCredential
-            );
+
+            const sortitionState = [seed, await web3.eth.getBlockNumber(), scoreCutoff, weight, pubKey];
+
+            const check = await sortition.testVerifySortitionCredential(sortitionState, sortitionCredential);
 
             if (proof.gamma.x > scoreCutoff) {
                 expect(check).to.equal(false);

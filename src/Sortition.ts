@@ -3,7 +3,6 @@ import { bn254 } from "@noble/curves/bn254"; // also known as alt_bn128
 import { Field } from "@noble/curves/abstract/modular"; // also known as alt_bn128
 import { ProjPointType, AffinePoint } from "@noble/curves/abstract/weierstrass";
 import { encodePacked } from "web3-utils";
-import { toBN } from "./protocol/utils/voting-utils";
 import { sha256 } from "ethers";
 
 export type SortitionKey = {
@@ -25,9 +24,23 @@ export function KeyGen(): SortitionKey {
     return key;
 }
 
-export function VerifiableRandomness(key: SortitionKey, seed: bigint, replicate: bigint): Proof {
+export function Randomness(key: SortitionKey, baseSeed: bigint, blockNum: bigint, replicate: bigint): bigint {
+    const toHash: string = encodePacked(
+        { value: baseSeed.toString(), type: "uint256" },
+        { value: blockNum.toString(), type: "uint256" },
+        { value: replicate.toString(), type: "uint256" }
+    )!;
+
+    const h = g1HashToPoint(toHash);
+    const gamma = h.multiply(key.sk);
+
+    return gamma.x;
+}
+
+export function VerifiableRandomness(key: SortitionKey, baseSeed: bigint, blockNum: bigint, replicate: bigint): Proof {
     let toHash: string = encodePacked(
-        { value: seed.toString(), type: "uint256" },
+        { value: baseSeed.toString(), type: "uint256" },
+        { value: blockNum.toString(), type: "uint256" },
         { value: replicate.toString(), type: "uint256" }
     )!;
 

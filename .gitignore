@@ -6,7 +6,7 @@ coverage.json
 typechain
 typechain-types
 logs
-deployed-contracts.json
+deployment/simulation/deployed-contracts.json
 
 # Hardhat files
 cache
