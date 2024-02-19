@@ -16,6 +16,7 @@ import { promiseWithTimeout, retryPredicate } from "../utils/retry";
 import { RevertedTxError, asError } from "../utils/error";
 import { SortitionKey, Proof } from "../Sortition";
 import { sleepFor } from "../utils/time";
+import { BareSignature } from "../utils/voting-types";
 
 interface TypeChainContracts {
     readonly voterRegistry: VoterRegistry;
@@ -40,12 +41,12 @@ export class Web3Provider {
     }
 
     // only on mocked contract
-    async registerAsAVoter(epoch: number, key: SortitionKey, weight: number, addToNonce?: number) {
+    async registerAsAVoter(epoch: number, key: SortitionKey, weight: number, address: string, addToNonce?: number) {
         const x = "0x" + "0".repeat(64 - key.pk.x.toString(16).length) + key.pk.x.toString(16);
         const y = "0x" + "0".repeat(64 - key.pk.y.toString(16).length) + key.pk.y.toString(16);
 
         const newProvider: [string, string, number] = [x, y, weight];
-        const methodCall = this.contracts.flareSystemMock.methods.registerAsVoter(epoch, newProvider);
+        const methodCall = this.contracts.flareSystemMock.methods.registerAsVoter(epoch, address, newProvider);
         return this.signAndFinalize(
             "RegisterAsAVoter",
             this.contracts.voterRegistry.options.address,
@@ -110,6 +111,7 @@ export class Web3Provider {
         replicate: number,
         deltas: [string[], string],
         submissionBlockNum: number,
+        signature: BareSignature,
         addToNonce?: number
     ) {
         const sortitionCredential: [number, [string, string], string, string] = [
@@ -119,11 +121,12 @@ export class Web3Provider {
             proof.s.toString(),
         ];
 
-        const newFastUpdate: [number, [number, [string, string], string, string], [string[], string]] = [
-            submissionBlockNum,
-            sortitionCredential,
-            deltas,
-        ];
+        const newFastUpdate: [
+            number,
+            [number, [string, string], string, string],
+            [string[], string],
+            [number, string, string]
+        ] = [submissionBlockNum, sortitionCredential, deltas, [signature.v, signature.r, signature.s]];
 
         const methodCall = this.contracts.fastUpdater.methods.submitUpdates(newFastUpdate);
 

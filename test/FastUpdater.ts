@@ -5,6 +5,10 @@ import { KeyGen, VerifiableRandomness, SortitionKey, Proof } from "../src/Sortit
 import { RandInt } from "../src/utils/rand";
 import { loadAccounts } from "../deployment/tasks/common";
 import { Account } from "web3-core";
+import { encodePacked } from "web3-utils";
+import { web3 } from "hardhat";
+import { signMessage } from "../src/utils/web3";
+import { sha256 } from "ethers";
 import { RangeFPA, SampleFPA } from "../src/utils/fixed-point-arithmetics";
 
 const FastUpdater = artifacts.require("FastUpdater");
@@ -57,7 +61,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
             const x = "0x" + web3.utils.padLeft(key.pk.x.toString(16), 64);
             const y = "0x" + web3.utils.padLeft(key.pk.y.toString(16), 64);
             const newProvider = [x, y, BigInt(VOTER_WEIGHT)];
-            await flareSystemMock.registerAsVoter(TEST_EPOCH, newProvider, { from: accounts[i + 1].address });
+            await flareSystemMock.registerAsVoter(TEST_EPOCH, accounts[i + 1].address, newProvider);
         }
 
         fastUpdater = await FastUpdater.new(
@@ -109,13 +113,30 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                         // console.log("submitting", feed, "client", i, "with rep", rep);
 
                         const deltas = [[delta, ZEROS64, ZEROS64, ZEROS64, ZEROS64, ZEROS64, ZEROS64], ZEROS52];
-                        const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas];
+                        const toHash = encodePacked(
+                            { value: submissionBlockNum.toString(), type: "uint256" },
+                            { value: replicate.toString(), type: "uint256" },
+                            { value: proof.gamma.x.toString(), type: "uint256" },
+                            { value: proof.gamma.y.toString(), type: "uint256" },
+                            { value: proof.c.toString(), type: "uint256" },
+                            { value: proof.s.toString(), type: "uint256" },
+                            { value: deltas[0][0], type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS52, type: "bytes32" }
+                        )!;
+                        const signature = signMessage(web3, sha256(toHash), accounts[i + 1].privateKey);
+                        const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas, signature];
 
-                        await fastUpdater.submitUpdates(newFastUpdate, { from: accounts[i + 1].address });
+                        await fastUpdater.submitUpdates(newFastUpdate);
                         let caughtError = false;
                         try {
                             // test if submitting again gives error
-                            await fastUpdater.submitUpdates(newFastUpdate, { from: accounts[i + 1].address });
+                            await fastUpdater.submitUpdates(newFastUpdate);
                         } catch (e) {
                             expect(e).to.be.not.empty;
                             caughtError = true;
@@ -168,9 +189,26 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
                     if (proof.gamma.x < scoreCutoff) {
                         // console.log("submitting -+0+0- client", i, "with rep", rep);
                         const deltas = [[delta, ZEROS64, ZEROS64, ZEROS64, ZEROS64, ZEROS64, ZEROS64], ZEROS52];
-                        const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas];
+                        const toHash = encodePacked(
+                            { value: submissionBlockNum.toString(), type: "uint256" },
+                            { value: replicate.toString(), type: "uint256" },
+                            { value: proof.gamma.x.toString(), type: "uint256" },
+                            { value: proof.gamma.y.toString(), type: "uint256" },
+                            { value: proof.c.toString(), type: "uint256" },
+                            { value: proof.s.toString(), type: "uint256" },
+                            { value: deltas[0][0], type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS64, type: "bytes32" },
+                            { value: ZEROS52, type: "bytes32" }
+                        )!;
+                        const signature = signMessage(web3, sha256(toHash), accounts[i + 1].privateKey);
+                        const newFastUpdate = [submissionBlockNum, sortitionCredential, deltas, signature];
 
-                        await fastUpdater.submitUpdates(newFastUpdate, { from: accounts[i + 1].address });
+                        await fastUpdater.submitUpdates(newFastUpdate);
                         numSubmitted--;
                         if (numSubmitted == 0) {
                             breakVar = true;

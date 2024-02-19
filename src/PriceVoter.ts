@@ -3,6 +3,9 @@ import { Web3Provider } from "./providers/Web3Provider";
 import { KeyGen } from "./Sortition";
 import { VerifiableRandomness, Randomness, Proof } from "./Sortition";
 import { PriceFeedProvider } from "./price-feeds/PriceFeedProvider";
+import { encodePacked } from "web3-utils";
+import { sha256 } from "ethers";
+import { signMessage } from "./utils/web3";
 
 export class PriceVoter {
     private readonly logger = getLogger(PriceVoter.name);
@@ -12,13 +15,15 @@ export class PriceVoter {
     private weight: number;
     private priceFeedProvider: PriceFeedProvider;
     private lastRegisteredEpoch: number;
+    private privateKey: string;
 
     constructor(
         private readonly provider: Web3Provider,
         priceFeedProvider: PriceFeedProvider,
         address: string,
         epochLen: number,
-        weight: number
+        weight: number,
+        privateKey: string
     ) {
         this.provider = provider;
         this.priceFeedProvider = priceFeedProvider;
@@ -26,11 +31,48 @@ export class PriceVoter {
         this.epochLen = epochLen;
         this.weight = weight;
         this.lastRegisteredEpoch = -1;
+        this.privateKey = privateKey;
     }
 
     async registerAsVoter(epoch: number, weight: number, addToNonce?: number) {
-        const receipt = await this.provider.registerAsAVoter(epoch, this.key, weight, addToNonce);
+        const receipt = await this.provider.registerAsAVoter(epoch, this.key, weight, this.address, addToNonce);
         this.lastRegisteredEpoch = epoch;
+        return receipt;
+    }
+
+    async submitUpdates(
+        proof: Proof,
+        replicate: number,
+        deltas: [string[], string],
+        submissionBlockNum: number,
+        addToNonce?: number
+    ) {
+        const toHash = encodePacked(
+            { value: submissionBlockNum.toString(), type: "uint256" },
+            { value: replicate.toString(), type: "uint256" },
+            { value: proof.gamma.x.toString(), type: "uint256" },
+            { value: proof.gamma.y.toString(), type: "uint256" },
+            { value: proof.c.toString(), type: "uint256" },
+            { value: proof.s.toString(), type: "uint256" },
+            { value: deltas[0][0], type: "bytes32" },
+            { value: deltas[0][1], type: "bytes32" },
+            { value: deltas[0][2], type: "bytes32" },
+            { value: deltas[0][3], type: "bytes32" },
+            { value: deltas[0][4], type: "bytes32" },
+            { value: deltas[0][5], type: "bytes32" },
+            { value: deltas[0][6], type: "bytes32" },
+            { value: deltas[1], type: "bytes32" }
+        )!;
+        const signature = signMessage(this.provider.web3, sha256(toHash), this.privateKey);
+
+        const receipt = await this.provider.submitUpdates(
+            proof,
+            replicate,
+            deltas,
+            submissionBlockNum,
+            signature,
+            addToNonce
+        );
         return receipt;
     }
 
@@ -47,9 +89,6 @@ export class PriceVoter {
     }
 
     async run() {
-        this.logger.info("waiting for a new epoch");
-        await this.provider.waitForNewEpoch(this.epochLen);
-
         let myWeight: number = 0;
         let currentRandom: bigint = BigInt(0);
 
@@ -57,23 +96,31 @@ export class PriceVoter {
             const blockNum = await this.provider.getBlockNumber();
             const epoch = Math.floor((blockNum + 1) / this.epochLen);
 
-            if (blockNum % this.epochLen >= this.epochLen - 4) {
-                if (epoch + 1 > this.lastRegisteredEpoch) {
-                    const status = await this.reRegister(epoch);
-                    if (status) {
-                        await this.provider.waitForNewEpoch(this.epochLen);
-                    } else {
-                        await this.provider.waitForBlock(blockNum + 1);
-                    }
-                    continue;
-                }
+            // just before the epoch ends, register for the new epoch
+            if ((blockNum + 1) % this.epochLen >= this.epochLen - 4 && epoch + 1 > this.lastRegisteredEpoch) {
+                await this.reRegister(epoch + 1);
+                await this.provider.waitForBlock(blockNum + 1);
+                continue;
             }
 
+            // client cannot participate yet, since it is not registered for this epoch
+            if (epoch > this.lastRegisteredEpoch) {
+                this.logger.info(`waiting for epoch ${epoch + 1}, current block ${blockNum}`);
+                await this.provider.waitForBlock(blockNum - (blockNum % this.epochLen) + this.epochLen - 4);
+                continue;
+            }
+
+            // to late to submit, epoch will change in the next block
+            if (blockNum % this.epochLen == this.epochLen - 1) {
+                continue;
+            }
+
+            // new epoch started, get client's weight and the new random seed
             if (blockNum % this.epochLen == 0) {
                 myWeight = Number(await this.getMyWeight());
                 currentRandom = BigInt((await this.provider.getBaseSeed()).toString());
                 this.logger.info(
-                    `new epoch ${epoch}, my weight in this epoch weight: ${myWeight}, current random: ${currentRandom}`
+                    `new epoch ${epoch}, my weight in this epoch: ${myWeight}, current random: ${currentRandom}`
                 );
             }
 
@@ -101,8 +148,7 @@ export class PriceVoter {
 
                 const deltas: [[string[], string], string] = this.priceFeedProvider.getFeed();
                 this.logger.info(`submitting update ${deltas[1]} with rep ${rep} for block ${blockNum}`);
-                this.provider
-                    .submitUpdates(proof, rep, deltas[0], blockNum, addToNonce)
+                this.submitUpdates(proof, rep, deltas[0], blockNum, addToNonce)
                     .then(receipt => {
                         const status = receipt.status ? "successful" : "fail";
 
@@ -117,16 +163,13 @@ export class PriceVoter {
     }
 
     async reRegister(epoch: number) {
-        // console.log("end of epoch procedure");
         let status = true;
 
         // register for the next epoch
-        const promise = this.registerAsVoter(epoch + 1, this.weight)
+        const promise = this.registerAsVoter(epoch, this.weight)
             .then(receipt => {
                 this.logger.info(
-                    `registered again, now for epoch ${epoch + 1} in block ${receipt.blockNumber} status: ${
-                        receipt.status
-                    }`
+                    `registered for epoch ${epoch} in block ${receipt.blockNumber} status: ${receipt.status}`
                 );
             })
             .catch(error => {
