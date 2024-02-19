@@ -12,6 +12,7 @@ import "../interface/mocks/FlareSystemManager.sol";
 import "../interface/mocks/VoterRegistry.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
+import {recoverSigner} from "../lib/Signature.sol";
 import "hardhat/console.sol";
 
 // The number of units of weight distributed among providers is 1 << VIRTUAL_PROVIDER_BITS
@@ -84,8 +85,10 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
             "Updates no longer accepted for the given block"
         );
         require(block.number >= updates.sortitionBlock, "Updates not yet available for the given block");
+        bytes32 msgHashed = sha256(abi.encode(updates.sortitionBlock, updates.sortitionCredential, updates.deltas));
+        address sender = recoverSigner(msgHashed, updates.signature);
 
-        (Bn256.G1Point memory key, uint weight) = _providerData(msg.sender);
+        (Bn256.G1Point memory key, uint weight) = _providerData(sender);
         SortitionState memory sortitionState = SortitionState({
             baseSeed: flareSystemManager.getCurrentRandom(),
             blockNumber: updates.sortitionBlock,

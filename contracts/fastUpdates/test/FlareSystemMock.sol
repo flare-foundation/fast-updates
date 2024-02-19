@@ -44,9 +44,9 @@ contract FlareSystemMock is VoterRegistry, FlareSystemManager {
 
     // Combines the functionality of VoterRegistry.registerVoter and EntityManager.registerPublicKey
     // from flare-smart-contracts-v2
-    function registerAsVoter(uint epoch, Policy calldata policy) external {
+    function registerAsVoter(uint epoch, address sender, Policy calldata policy) external {
         require(policy.weight != 0, "Weight must be nonzero");
-        policies[epoch][msg.sender] = policy;
+        policies[epoch][sender] = policy;
         totalWeights[epoch] += policy.weight;
     }
 }

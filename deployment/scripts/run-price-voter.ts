@@ -38,21 +38,7 @@ async function main() {
 
     const priceFeedProvider = new PriceFeedProvider(FEEDS.length);
 
-    const priceVoter = new PriceVoter(web3Provider, priceFeedProvider, address, EPOCH_LEN, WEIGHT);
-    let currentBlock = await web3Provider.getBlockNumber();
-    // if the reward epoch is just changing, wait
-    if (currentBlock % EPOCH_LEN == 0 || (currentBlock + 1) % EPOCH_LEN == 0 || (currentBlock + 2) % EPOCH_LEN == 0) {
-        await web3Provider.waitForBlock(currentBlock + 3);
-        currentBlock = await web3Provider.getBlockNumber();
-    }
-    const nextEpoch = Math.floor((currentBlock + 1) / EPOCH_LEN) + 1;
-
-    const receipt1 = priceVoter.registerAsVoter(nextEpoch, WEIGHT);
-
-    const receipt = await receipt1;
-    logger.info(
-        `registered as a voter for epoch ${nextEpoch} in block ${receipt.blockNumber} status ${receipt.status}`
-    );
+    const priceVoter = new PriceVoter(web3Provider, priceFeedProvider, address, EPOCH_LEN, WEIGHT, privateKey);
 
     await priceVoter.run();
 
