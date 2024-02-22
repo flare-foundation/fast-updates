@@ -13,7 +13,6 @@ import "../interface/mocks/VoterRegistry.sol";
 import "../lib/FixedPointArithmetic.sol" as FPA;
 import "../lib/Bn256.sol";
 import {recoverSigner} from "../lib/Signature.sol";
-import "hardhat/console.sol";
 
 // The number of units of weight distributed among providers is 1 << VIRTUAL_PROVIDER_BITS
 uint constant VIRTUAL_PROVIDER_BITS = 12;
@@ -29,57 +28,62 @@ struct Submitted {
 }
 
 contract FastUpdater is IIFastUpdater, CircularListManager {
-    FPA.Price[1000] public prices;
+    FPA.Price[1000] private prices;
     uint submissionWindow;
 
     Submitted[] internal submitted;
 
     constructor(
+        address _governance,
         VoterRegistry _voterRegistry,
         FlareSystemManager _flareSystemManager,
         IIFastUpdateIncentiveManager _fastUpdateIncentiveManager,
         FPA.Price[] memory _prices,
         uint _submissionWindow
     )
-        IIFastUpdater(_voterRegistry, _flareSystemManager, _fastUpdateIncentiveManager)
+        IIFastUpdater(_governance, _voterRegistry, _flareSystemManager, _fastUpdateIncentiveManager)
         CircularListManager(_submissionWindow + 1)
     {
-        setSubmissionWindow(_submissionWindow);
-        setPrices(_prices);
-        setSubmitted();
+        _setSubmissionWindow(_submissionWindow);
+        _setPrices(_prices);
+        _initSubmitted();
     }
 
-    function setSubmissionWindow(uint _submissionWindow) public {
-        // only governance
+    function setSubmissionWindow(uint _submissionWindow) external override onlyGovernance {
+        _setSubmissionWindow(_submissionWindow);
+    }
+
+    function _setSubmissionWindow(uint _submissionWindow) private {
         submissionWindow = _submissionWindow;
     }
 
-    function setPrices(FPA.Price[] memory _prices) public {
-        // only governance
+    function setPrices(FPA.Price[] memory _prices) external override onlyGovernance {
+        _setPrices(_prices);
+    }
+
+    function _setPrices(FPA.Price[] memory _prices) private {
         for (uint i = 0; i < _prices.length; ++i) {
             prices[i] = _prices[i];
         }
     }
 
-    function setSubmitted() public {
-        // only governance
+    function _initSubmitted() private {
         for (uint i = 0; i < circularLength; ++i) {
             submitted.push();
         }
     }
 
-    function freeSubmitted() public {
-        // only governance
+    function freeSubmitted() external override onlyGovernance {
         delete submitted[nextIx()];
     }
 
-    function getSubmitted(uint blockNum) internal view returns (Submitted storage submittedI) {
+    function getSubmitted(uint blockNum) private view returns (Submitted storage submittedI) {
         string memory failMsg = "Sortition round for the given block is no longer or not yet available";
         uint ix = blockIx(blockNum, failMsg);
         submittedI = submitted[ix];
     }
 
-    function submitUpdates(FastUpdates calldata updates) external override {
+    function submitUpdates(FastUpdates calldata updates) external {
         require(
             block.number < updates.sortitionBlock + submissionWindow,
             "Updates no longer accepted for the given block"
@@ -128,21 +132,21 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
         weight = (uint(normalizedWeight) << VIRTUAL_PROVIDER_BITS) >> 16;
     }
 
-    function currentSortitionWeight(address voter) public view override returns (uint weight) {
+    function currentSortitionWeight(address voter) external view returns (uint weight) {
         (, weight) = _providerData(voter);
     }
 
-    function currentScoreCutoff() public view override returns (uint cutoff) {
+    function currentScoreCutoff() public view returns (uint cutoff) {
         FPA.SampleSize expectedSampleSize = fastUpdateIncentiveManager.getExpectedSampleSize();
         // The formula is: (exp. s.size)/(num. prov.) = (score)/(score range)
         //   score range = p = 21888242871839275222246405745257275088696311157297823662689037894645226208583
-        //   num. prov.  = 2**VIRTUAL_PROVIDER_BITS
-        //   exp. s.size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
+        //   num. providers  = 2**VIRTUAL_PROVIDER_BITS
+        //   exp. sample size = "expectedSampleSize8x8 >> 8", in that we keep the fractional bits:
         cutoff = (BIG_P * uint(FPA.SampleSize.unwrap(expectedSampleSize))) << (UINT_SPLIT - 8 - VIRTUAL_PROVIDER_BITS);
         cutoff += (SMALL_P * uint(FPA.SampleSize.unwrap(expectedSampleSize))) >> (8 + VIRTUAL_PROVIDER_BITS);
     }
 
-    function fetchCurrentPrices(uint[] calldata feeds) external view override returns (FPA.Price[] memory _prices) {
+    function fetchCurrentPrices(uint[] calldata feeds) external view returns (FPA.Price[] memory _prices) {
         _prices = new FPA.Price[](feeds.length);
         for (uint i = 0; i < feeds.length; ++i) {
             _prices[i] = prices[feeds[i]];

@@ -22,6 +22,7 @@ contract(`FastUpdateIncentiveManager.sol; ${getTestFile(__filename)}`, async () 
         const governance = accounts[0];
         fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new(
             governance.address,
+            governance.address,
             BASE_SAMPLE_SIZE,
             BASE_RANGE,
             SAMPLE_INCREASE_LIMIT,

@@ -8,7 +8,6 @@ type Range is uint16; // 8x8
 type Price is uint32; // 32x0 // An FTSO v2 price is 32-bit, as per the ftso-scaling repo
 type Fractional is uint16; // 0x16
 type Fee is uint240; // Same scale as currency units, with restricted bit length
-import "hardhat/console.sol";
 
 Scale constant one = Scale.wrap(1 << 15); // 1.0000 0000 0000 000 binary
 SampleSize constant zeroS = SampleSize.wrap(0);

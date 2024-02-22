@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "hardhat/console.sol";
 import "../lib/Bn256.sol";
 import {SortitionState, SortitionCredential, verifySortitionCredential, verifySortitionProof} from "../lib/Sortition.sol";
 

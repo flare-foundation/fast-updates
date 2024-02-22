@@ -2,28 +2,26 @@
 pragma solidity 0.8.18;
 pragma abicoder v2;
 
-import { CircularListManager } from "./CircularListManager.sol";
+import {CircularListManager} from "./CircularListManager.sol";
+import {IIncreaseManager} from "../../interface/IIncreaseManager.sol";
 import "../../lib/FixedPointArithmetic.sol" as FPA;
+import {Governed} from "../../interface/Governed.sol";
 
-abstract contract IncreaseManager is CircularListManager {
+abstract contract IncreaseManager is IIncreaseManager, CircularListManager {
     // Circular lists all
     FPA.SampleSize[] private sampleIncreases;
     FPA.Range[] private rangeIncreases;
     FPA.Fee[] private excessOfferIncreases;
 
-    // This is an optimization to prevent recalculation of these numbers in every offer.
-    // Extra bookkeeping is required.
     FPA.SampleSize sampleSize;
     FPA.Range range;
     FPA.Fee excessOfferValue;
 
-    constructor(uint _dur)
-        CircularListManager(_dur)
-    {
+    constructor(uint _dur) CircularListManager(_dur) {
         init();
     }
 
-    function init() internal {
+    function init() private {
         delete sampleIncreases;
         delete rangeIncreases;
         delete excessOfferIncreases;
@@ -40,7 +38,6 @@ abstract contract IncreaseManager is CircularListManager {
         excessOfferValue = FPA.sub(excessOfferValue, excessOfferIncreases[nextIx()]);
         range = FPA.sub(range, rangeIncreases[nextIx()]);
         sampleSize = FPA.sub(sampleSize, sampleIncreases[nextIx()]);
-        
         sampleIncreases[nextIx()] = FPA.zeroS;
         rangeIncreases[nextIx()] = FPA.zeroR;
         excessOfferIncreases[nextIx()] = FPA.zeroF;
@@ -61,12 +58,12 @@ abstract contract IncreaseManager is CircularListManager {
         excessOfferValue = FPA.add(excessOfferValue, dx);
     }
 
-    function getIncentiveDuration() external view returns(uint) {
+    function getIncentiveDuration() external view returns (uint) {
         return circularLength;
     }
 
-    function setIncentiveDuration(uint _dur) external {
-        setCircularLength(_dur);
-        IncreaseManager.init();
+    function _setIncentiveDuration(uint _duration) internal {
+        setCircularLength(_duration);
+        init();
     }
 }

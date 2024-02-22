@@ -45,6 +45,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         flareSystemMock = await FlareSystemMock.new(RandInt(2n ** 256n - 1n), EPOCH_LEN);
         fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new(
             governance.address,
+            governance.address,
             BASE_SAMPLE_SIZE,
             BASE_RANGE,
             SAMPLE_INCREASE_LIMIT,
@@ -65,6 +66,7 @@ contract(`FastUpdater.sol; ${getTestFile(__filename)}`, async () => {
         }
 
         fastUpdater = await FastUpdater.new(
+            governance.address,
             flareSystemMock.address,
             flareSystemMock.address,
             fastUpdateIncentiveManager.address,
