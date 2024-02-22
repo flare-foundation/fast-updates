@@ -15,12 +15,12 @@ interface IFastUpdater {
         Signature signature;
     }
 
-    event FastUpdate(
-        address indexed providerAddress
-    );
+    event FastUpdate(address indexed providerAddress);
 
     function submitUpdates(FastUpdates calldata) external;
-    function fetchCurrentPrices(uint[] calldata) external view  returns(FPA.Price[] memory);
+
+    function fetchCurrentPrices(uint[] calldata) external view returns (FPA.Price[] memory);
+
     function currentScoreCutoff() external view returns (uint);
 
     function currentSortitionWeight(address voter) external view returns (uint);

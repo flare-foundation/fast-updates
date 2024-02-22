@@ -29,11 +29,20 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment) {
     const flareSystemMock = await artifacts.require("FlareSystemMock").new(RandInt(2n ** 256n - 1n), EPOCH_LEN);
     const fastUpdateIncentiveManager = await artifacts
         .require("FastUpdateIncentiveManager")
-        .new(governance.address, BASE_SAMPLE_SIZE, BASE_RANGE, SAMPLE_INCREASE_LIMIT, RANGE_INCREASE_PRICE, DURATION);
+        .new(
+            governance.address,
+            governance.address,
+            BASE_SAMPLE_SIZE,
+            BASE_RANGE,
+            SAMPLE_INCREASE_LIMIT,
+            RANGE_INCREASE_PRICE,
+            DURATION
+        );
 
     const fastUpdater = await artifacts
         .require("FastUpdater")
         .new(
+            governance.address,
             flareSystemMock.address,
             flareSystemMock.address,
             fastUpdateIncentiveManager.address,
