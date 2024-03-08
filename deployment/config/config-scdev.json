@@ -1,6 +1,0 @@
-{
-  "governancePrivateKey": "<set in .env>",
-  "rpcUrl": "http://127.0.0.1:9650/ext/bc/C/rpc",
-  "gasLimit": "2500000",
-  "gasPriceMultiplier": 1.2
-}

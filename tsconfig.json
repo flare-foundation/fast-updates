@@ -1,25 +1,40 @@
 {
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "noImplicitAny": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "outDir": "dist",
-    "typeRoots": ["node_modules/@types"]
-  },
-  "include": [
-    "./deployment",
-    "./src",
-    "./test",
-    "./typechain-types",
-    "./typechain",
-    "./typechain-truffle",
-    "./typechain-web3",
-    "./test-utils/utils",
- ],
-  "files": ["./hardhat.config.ts"]
+    "compilerOptions": {
+        /* Base Options */
+        "target": "es2022",
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+
+        /* Other Options */
+        "outDir": "dist",
+        "typeRoots": ["node_modules/@types"],
+
+        /* Strictness */
+        "strict": true,
+        "alwaysStrict": true,
+        "strictNullChecks": true,
+        "strictBindCallApply": true,
+        "strictFunctionTypes": true,
+        "strictPropertyInitialization": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "useUnknownInCatchVariables": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true
+    },
+    "include": [
+        "./client",
+        "./deployment",
+        "./test",
+        "./typechain-truffle",
+        "./typechain-web3"
+    ],
+    "exclude": ["**/node_modules", "**/.*/"],
+    "files": ["./hardhat.config.ts"]
 }

@@ -1,11 +1,34 @@
-image: node:18.17.1
+workflow:
+    rules:
+        - if: '$CI_OPEN_MERGE_REQUESTS != null && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
+          when: never
+        - when: always
 
-stages:
-    - test
-
-test_core:
+.test:
     stage: test
+    image: node:20
+    cache:
+        - key:
+              files:
+                  - yarn.lock
+          paths:
+              - node_modules/
+          policy: pull
+    before_script:
+        - yarn install --immutable
+        - yarn compile
+
+lint:
+    extends: .test
     script:
-        - yarn install
-        - yarn c
+        - yarn lint
+
+test:
+    extends: .test
+    script:
         - yarn test
+
+test-coverage:
+    extends: .test
+    script:
+        - yarn test-coverage
