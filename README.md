@@ -2,75 +2,102 @@
 
 This repo contains MVP of an implementation of the new Fast Updates proposal.
 
-# Setup
-
-## Local install
+## Setup
 
 ### Node.JS
 
--   Install [NVM](https://github.com/nvm-sh/nvm).
--   Install Node v18 (LTS):
-    ```
-    nvm install 18
-    ```
--   Set version 18 as default:
-    ```
-    nvm alias default 18
-    ```
+Install [NVM](https://github.com/nvm-sh/nvm), and Node v20 (LTS):
+
+```bash
+nvm install 20
+```
+
+### Yarn
+
+Install dependencies with `yarn`:
+
+```bash
+corepack enable
+yarn install
+```
 
 ### Project
 
--   Install `yarn` and dependencies:
-    ```
-    npm install -g yarn
-    yarn install
-    ```
--   To compile smart contracts run:
-    ```
-    yarn c
-    ```
+To compile smart contracts:
+
+```bash
+yarn compile
+```
+
+To format with prettier:
+
+```bash
+yarn format
+```
+
+To lint with eslint:
+
+```bash
+yarn lint
+```
 
 ## Docker
 
-Instead of installing a local version, one can use docker. To build a docker image, run
+To build a docker image, run:
 
-```
-docker build . -t fast-updates
-```
-
-# Tests
-
--   To run all tests run:
-
-```
-yarn test
+```bash
+docker build -t fast-updates .
 ```
 
--   With docker (assuming the image `fast-updates` was build), move to `test` folder and run docker compose:
+To test the protocol using docker, navigate to the `test` directory and run docker compose:
 
-```
+```bash
 cd test
 docker compose up
 ```
 
-# Simulation
+## Simulating locally
+
+Start the chain:
+
+```bash
+yarn hardhat node
+```
+
+Deploy the contracts and run the admin daemon:
+
+```bash
+yarn hardhat deploy-contracts --network localhost && yarn hardhat run-admin-daemon --network localhost
+```
+
+Run the fast updates providers:
+
+```bash
+yarn ts-node client/run-fast-updates-provider.ts $ID --network localhost
+```
+
+where `$ID` is the ID of the provider (1, 2, ...)
+
+## Visualizer
+
+Uses `dash` and `plotly` to render a live graph of the price feed in the browser, along with monitoring error rates of individual providers. Follow the instructions in `visualizer/README.md` to install and run the visualizer.
+
+## Simulating with Docker
 
 A simulation of the protocol using docker is available. It includes deploying and setting a chain node,
 deploying contracts, running a daemon, and running multiple fast updates providers. Navigate to
 `deployment/simulation` (assuming that the docker image `fast-updates` was build, as explained above)
 and run docker compose:
 
-```
-cd deployment/simulation
+```bash
+cd deployment
 docker compose up
 ```
 
-# Development
+## Notes
 
-Recommended editor to use is [VSCode](https://code.visualstudio.com/).
+Strict type checked (in addition to strict mode) is enforced throughout the project (see `tsconfig.json` and `.eslintrc.js`).
 
-## Code formatting
+For testing purposes (under `test/`), `typechain-truffle` is used to generate typechain artifacts from the contracts. The contracts are locally instantiated and used in the tests.
 
-We use `Prettier` for code formatting, with settings defined under `package.json`.
-
-You can install the VSCode extension and use the shortcut `Alt/Option` + `Shift` + `F` to auto-format the current file.
+For deployment purposes (under `deployment/`), `typechain-web3-v1` is used to interact with the contracts.
