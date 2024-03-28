@@ -40,24 +40,24 @@ const FlareSystemMock = artifacts.require(
 ) as FlareSystemMockContract
 
 let TEST_REWARD_EPOCH: bigint
+const NUM_ACCOUNTS = 5
 
-const EPOCH_LEN = 1000 as const
-const NUM_ACCOUNTS = 3 as const
-const VOTER_WEIGHT = 1000 as const
-const SUBMISSION_WINDOW = 10 as const
+const NUM_FEEDS = 256
+const ANCHOR_PRICES = [5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000]
+for (let i = 8; i < NUM_FEEDS; i++) {
+    ANCHOR_PRICES.push(i * 10000)
+}
 
-const DURATION = 8 as const
-const BASE_SAMPLE_SIZE = SampleFPA(2)
+const VOTER_WEIGHT = 1000
+const SUBMISSION_WINDOW = 10
+const BASE_SAMPLE_SIZE = SampleFPA(16)
 const BASE_RANGE = RangeFPA(2 ** -5)
 const SAMPLE_INCREASE_LIMIT = SampleFPA(5)
 const SCALE = 1 + BASE_RANGE / BASE_SAMPLE_SIZE
-const RANGE_INCREASE_PRICE = 5 as const
-
-const ANCHOR_PRICES = [1000, 10000]
-const NUM_FEEDS = ANCHOR_PRICES.length
-
-const ZEROS64 = '0x' + '0'.repeat(64)
-const ZEROS52 = '0x' + '0'.repeat(52)
+const RANGE_INCREASE_PRICE = 16
+const DURATION = 8
+const EPOCH_LEN = 1000
+const BACKLOG_LEN = 20
 
 contract(
     `FastUpdater.sol; ${path.relative(path.resolve(), __filename)}`,
@@ -119,7 +119,8 @@ contract(
                 flareSystemMock.address,
                 fastUpdateIncentiveManager.address,
                 ANCHOR_PRICES,
-                SUBMISSION_WINDOW
+                SUBMISSION_WINDOW,
+                BACKLOG_LEN
             )
         })
 
@@ -143,9 +144,15 @@ contract(
                 await fastUpdater.fetchCurrentPrices(feeds)
             ).map((x: BN) => x.toNumber())
 
-            // Make price updates to the contract
-            const feed = '+-0-0+'
-            let delta = '0x731' + '0'.repeat(61)
+            // test with feeds of various length
+            let feed = '+--+00--'.repeat(16)
+            let deltas = '0x' + '7d0f'.repeat(16)
+            const differentFeed = '-+0000++'.repeat(8) + '-+00'
+            let differentDeltas = 'd005'.repeat(8) + 'd0'
+            deltas += differentDeltas
+            feed += differentFeed
+            differentDeltas = '0x' + differentDeltas
+
             let numSubmitted = 0
             for (;;) {
                 submissionBlockNum = (
@@ -158,6 +165,10 @@ contract(
                     await flareSystemMock.getCurrentRandom()
                 ).toString()
                 for (let i = 0; i < NUM_ACCOUNTS; i++) {
+                    submissionBlockNum = (
+                        await web3.eth.getBlockNumber()
+                    ).toString()
+
                     for (let rep = 0; rep < (weights[i] ?? 0); rep++) {
                         const repStr = rep.toString()
                         const proof: Proof = generateVerifiableRandomnessProof(
@@ -178,212 +189,141 @@ contract(
                         }
 
                         if (proof.gamma.x < scoreCutoff) {
-                            const deltas = {
-                                mainParts: [
-                                    delta,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                ],
-                                tailPart: ZEROS52,
+                            let update = deltas
+                            if (numSubmitted == 1) {
+                                // use a different update with different length for this test
+                                update = differentDeltas
                             }
-                            const msg = encodePacked(
-                                {
-                                    value: submissionBlockNum.toString(),
-                                    type: 'uint256',
-                                },
-                                { value: repStr, type: 'uint256' },
-                                {
-                                    value: proof.gamma.x.toString(),
-                                    type: 'uint256',
-                                },
-                                {
-                                    value: proof.gamma.y.toString(),
-                                    type: 'uint256',
-                                },
-                                { value: proof.c.toString(), type: 'uint256' },
-                                { value: proof.s.toString(), type: 'uint256' },
-                                {
-                                    value: deltas.mainParts[0] || '',
-                                    type: 'bytes32',
-                                },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS52, type: 'bytes32' }
+
+                            const toHash = web3.eth.abi.encodeParameters(
+                                [
+                                    'uint256',
+                                    'uint256',
+                                    'uint256',
+                                    'uint256',
+                                    'uint256',
+                                    'uint256',
+                                    'bytes',
+                                ],
+                                [
+                                    submissionBlockNum,
+                                    repStr,
+                                    proof.gamma.x.toString(),
+                                    proof.gamma.y.toString(),
+                                    proof.c.toString(),
+                                    proof.s.toString(),
+                                    update,
+                                ]
                             )
                             const signature = signMessage(
                                 web3,
-                                sha256(msg as BytesLike),
+                                sha256(toHash as BytesLike),
                                 (accounts[i + 1] as Web3Account).privateKey
                             )
                             const newFastUpdate = {
                                 sortitionBlock: submissionBlockNum,
                                 sortitionCredential: sortitionCredential,
-                                deltas: deltas,
+                                deltas: update,
                                 signature: signature,
                             }
 
                             // Submit updates to the contract
-                            await fastUpdater.submitUpdates(newFastUpdate, {
-                                from: accounts[i + 1]?.address ?? '',
-                            })
+                            const tx = await fastUpdater.submitUpdates(
+                                newFastUpdate,
+                                {
+                                    from: accounts[i + 1]?.address ?? '',
+                                }
+                            )
+                            // console.log('cost', tx.receipt.gasUsed)
+
+                            // let caughtError = false
+                            // try {
+                            //     // test if submitting again gives error
+                            //     console.log('gere2')
+
+                            //     const tx = await fastUpdater.submitUpdates(
+                            //         newFastUpdate,
+                            //         {
+                            //             from: accounts[i + 1]?.address ?? '',
+                            //         }
+                            //     )
+                            //     console.log('gere3', tx)
+                            // } catch (e) {
+                            //     expect(e).to.be.not.empty
+                            //     caughtError = true
+                            // }
+                            // console.log('gere')
+                            // expect(caughtError).to.equal(true)
+
                             numSubmitted++
+                            if (numSubmitted >= 2) break
                         }
                     }
+                    await fastUpdater.freeSubmitted({
+                        from: accounts[0]?.address ?? '',
+                    })
+                    if (numSubmitted >= 2) break
                 }
                 if (numSubmitted > 0) break
-                await fastUpdater.freeSubmitted({
-                    from: accounts[0]?.address ?? '',
-                })
             }
 
             // See effect of price updates made
-            const prices1: number[] = await fastUpdater
-                .fetchCurrentPrices(feeds)
-                .then((prices) => {
-                    return prices.map((x: BN) => x.toNumber())
-                })
+            let pricesBN: BN[] = await fastUpdater.fetchCurrentPrices(feeds)
+            const prices: bigint[] = []
             for (let i = 0; i < NUM_FEEDS; i++) {
-                let sign = 0
-                if (feed[i] == '+') {
-                    sign = 1
-                }
-                if (feed[i] == '-') {
-                    sign = -1
-                }
-                expect(prices1[i]).to.be.greaterThanOrEqual(
-                    (SCALE ** sign) ** numSubmitted *
-                        (startingPrices[i] as number) *
-                        0.99
-                )
-                expect(prices1[i]).to.be.lessThanOrEqual(
-                    (SCALE ** sign) ** numSubmitted *
-                        (startingPrices[i] as number) *
-                        1.01
-                )
-            }
-
-            delta = '0xd13' + '0'.repeat(61)
-            let breakVar = false
-            while (!breakVar) {
-                submissionBlockNum = String(await web3.eth.getBlockNumber())
-
-                const scoreCutoff = BigInt(
-                    (await fastUpdater.currentScoreCutoff()).toString()
-                )
-                const baseSeed = (
-                    await flareSystemMock.getCurrentRandom()
-                ).toString()
-
-                for (let i = 0; i < NUM_ACCOUNTS; i++) {
-                    for (let rep = 0; rep < (weights[i] ?? 0); rep++) {
-                        const repStr = rep.toString()
-                        const proof: Proof = generateVerifiableRandomnessProof(
-                            sortitionKeys[i] as SortitionKey,
-                            baseSeed,
-                            submissionBlockNum,
-                            repStr
-                        )
-                        const sortitionCredential = {
-                            replicate: repStr,
-                            gamma: {
-                                x: proof.gamma.x.toString(),
-                                y: proof.gamma.y.toString(),
-                            },
-                            c: proof.c.toString(),
-                            s: proof.s.toString(),
-                        }
-
-                        if (proof.gamma.x < scoreCutoff) {
-                            const deltas = {
-                                mainParts: [
-                                    delta,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                    ZEROS64,
-                                ],
-                                tailPart: ZEROS52,
-                            }
-                            const msg = encodePacked(
-                                {
-                                    value: submissionBlockNum.toString(),
-                                    type: 'uint256',
-                                },
-                                { value: repStr, type: 'uint256' },
-                                {
-                                    value: proof.gamma.x.toString(),
-                                    type: 'uint256',
-                                },
-                                {
-                                    value: proof.gamma.y.toString(),
-                                    type: 'uint256',
-                                },
-                                { value: proof.c.toString(), type: 'uint256' },
-                                { value: proof.s.toString(), type: 'uint256' },
-                                {
-                                    value: deltas.mainParts[0] || '',
-                                    type: 'bytes32',
-                                },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS64, type: 'bytes32' },
-                                { value: ZEROS52, type: 'bytes32' }
-                            )
-                            const signature = signMessage(
-                                web3,
-                                sha256(msg as BytesLike),
-                                (accounts[i + 1] as Web3Account).privateKey
-                            )
-                            const newFastUpdate = {
-                                sortitionBlock: submissionBlockNum,
-                                sortitionCredential: sortitionCredential,
-                                deltas: deltas,
-                                signature: signature,
-                            }
-
-                            await fastUpdater.submitUpdates(newFastUpdate, {
-                                from: accounts[i + 1]?.address ?? '',
-                            })
-                            numSubmitted--
-                            if (numSubmitted == 0) {
-                                breakVar = true
-                                break
-                            }
-                        }
+                prices[i] = BigInt(pricesBN[i].toString())
+                let newPrice = Number(startingPrices[i])
+                for (let j = 0; j < numSubmitted; j++) {
+                    let delta = feed[i]
+                    if (j == 1) {
+                        delta = differentFeed[i]
                     }
-                    if (breakVar) break
+
+                    if (delta == '+') {
+                        newPrice = Math.floor(
+                            (newPrice * Math.floor(SCALE * 2 ** 15)) / 2 ** 15
+                        )
+                    }
+                    if (delta == '-') {
+                        newPrice = Math.floor(
+                            (newPrice * 2 ** 15) / (SCALE * 2 ** 15)
+                        )
+                    }
+                    // console.log(newPrice, delta, i)
                 }
 
-                await fastUpdater.freeSubmitted({
-                    from: accounts[0]?.address ?? '',
-                })
+                expect(Number(prices[i])).to.be.equal(newPrice)
             }
 
-            const prices2: number[] = await fastUpdater
-                .fetchCurrentPrices(feeds)
-                .then((prices) => {
-                    return prices.map((x: BN) => x.toNumber())
-                })
+            console.log('applying deltas')
+            const tx = await fastUpdater.applySubmitted({
+                from: accounts[0].address,
+            })
+            // console.log('cost2', tx.receipt.gasUsed)
+
+            pricesBN = await fastUpdater.fetchCurrentPrices.call(feeds)
             for (let i = 0; i < NUM_FEEDS; i++) {
-                expect(prices2[i]).to.be.greaterThanOrEqual(
-                    (startingPrices[i] as number) * 0.99
-                )
-                expect(prices2[i]).to.be.lessThanOrEqual(
-                    (startingPrices[i] as number) * 1.01
-                )
+                prices[i] = BigInt(pricesBN[i].toString())
+                let newPrice = Number(startingPrices[i])
+                for (let j = 0; j < numSubmitted; j++) {
+                    let delta = feed[i]
+                    if (j == 1) {
+                        delta = differentFeed[i]
+                    }
+
+                    if (delta == '+') {
+                        newPrice = Math.floor(
+                            (newPrice * Math.floor(SCALE * 2 ** 15)) / 2 ** 15
+                        )
+                    }
+                    if (delta == '-') {
+                        newPrice = Math.floor(
+                            (newPrice * 2 ** 15) / (SCALE * 2 ** 15)
+                        )
+                    }
+                    // console.log(newPrice, delta, i)
+                }
+                expect(Number(prices[i])).to.be.equal(newPrice)
             }
         })
     }

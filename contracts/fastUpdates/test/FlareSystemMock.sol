@@ -37,6 +37,7 @@ contract FlareSystemMock is VoterRegistry, FlareSystemManager {
         Policy storage policy = policies[_rewardEpochId][_signingPolicyAddress];
         _publicKeyPart1 = policy.pk_1;
         _publicKeyPart2 = policy.pk_2;
+        require(_publicKeyPart1 != 0 || _publicKeyPart2 != 0, "Invalid signing policy address");
 
         uint weightsSum = totalWeights[_rewardEpochId];
         _normalisedWeight = uint16((policy.weight * type(uint16).max) / weightsSum);

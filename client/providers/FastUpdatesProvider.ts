@@ -98,26 +98,31 @@ export class FastUpdatesProvider {
     private async submitUpdates(
         proof: Proof,
         replicate: string,
-        deltas: [string[], string],
+        deltas: string,
         submissionBlockNum: string,
         addToNonce?: number
     ): Promise<TransactionReceipt> {
-        const msg = encodePacked(
-            { value: submissionBlockNum, type: 'uint256' },
-            { value: replicate, type: 'uint256' },
-            { value: proof.gamma.x.toString(), type: 'uint256' },
-            { value: proof.gamma.y.toString(), type: 'uint256' },
-            { value: proof.c.toString(), type: 'uint256' },
-            { value: proof.s.toString(), type: 'uint256' },
-            { value: deltas[0][0] as string, type: 'bytes32' },
-            { value: deltas[0][1] as string, type: 'bytes32' },
-            { value: deltas[0][2] as string, type: 'bytes32' },
-            { value: deltas[0][3] as string, type: 'bytes32' },
-            { value: deltas[0][4] as string, type: 'bytes32' },
-            { value: deltas[0][5] as string, type: 'bytes32' },
-            { value: deltas[0][6] as string, type: 'bytes32' },
-            { value: deltas[1], type: 'bytes32' }
+        const msg = this.provider.web3.eth.abi.encodeParameters(
+            [
+                'uint256',
+                'uint256',
+                'uint256',
+                'uint256',
+                'uint256',
+                'uint256',
+                'bytes',
+            ],
+            [
+                submissionBlockNum,
+                replicate,
+                proof.gamma.x.toString(),
+                proof.gamma.y.toString(),
+                proof.c.toString(),
+                proof.s.toString(),
+                deltas,
+            ]
         )
+
         const signature = signMessage(
             this.provider.web3,
             sha256(msg as BytesLike),
@@ -198,20 +203,22 @@ export class FastUpdatesProvider {
                                 `Block: ${receipt.blockNumber}, Update successful, ${deltas[1]}`
                             )
                         })
-                        .catch((error) => {
+                        .catch((error: unknown) => {
                             this.logger.error(
                                 `Block: ${blockNum}, Failed to submit updates ${error}`
                             )
                         })
                 )
                 addToNonce++
+                break // to avoid problems we let the client submit only one update per block
             }
         }
-        // Only submit updates for the current block
-        const currentBlockNum = await this.provider.getBlockNumber()
-        if (currentBlockNum === blockNum) {
-            await Promise.all(promises)
-        }
+        // // Only submit updates for the current block
+        // const currentBlockNum = await this.provider.getBlockNumber()
+        // if (currentBlockNum === blockNum) {
+
+        // }
+        await Promise.all(promises)
     }
 
     /**
@@ -253,10 +260,18 @@ export class FastUpdatesProvider {
             // Within the last 4 blocks of the epoch, re-register for the next epoch
             if (blockNum % this.epochLen >= this.epochLen - 4) {
                 if (epoch + 1 > this.lastRegisteredEpoch) {
-                    const registered = await this.reRegister(epoch)
+                    let registered = false
+                    try {
+                        registered = await this.reRegister(epoch)
+                    } catch (error) {
+                        this.logger.error(
+                            `Block: ${blockNum}, Failed to re-register ${error}`
+                        )
+                    }
                     if (registered) {
                         // If successful, wait for the next epoch
                         await this.provider.waitForNewEpoch(this.epochLen)
+                        continue
                     } else {
                         // If failed, wait for the next block to try again
                         await this.provider.waitForBlock(blockNum + 1)
@@ -296,12 +311,18 @@ export class FastUpdatesProvider {
             if (!rep.includes('+') && !rep.includes('-')) {
                 this.logger.debug(`No updates for block ${blockNum}`)
             } else {
-                await this.tryToSubmitUpdates(
-                    deltas,
-                    Number(currentWeight),
-                    BigInt(blockNum),
-                    currentBaseSeed.toString()
-                )
+                try {
+                    await this.tryToSubmitUpdates(
+                        deltas,
+                        Number(currentWeight),
+                        BigInt(blockNum),
+                        currentBaseSeed.toString()
+                    )
+                } catch (error) {
+                    this.logger.error(
+                        `Block: ${blockNum}, Failed to submit update ${error}`
+                    )
+                }
             }
 
             await this.provider.waitForBlock(blockNum + 1)

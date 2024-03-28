@@ -14,7 +14,7 @@ export type SortitionKey = {
     readonly pk: ProjPointType<bigint>
 }
 
-export type PriceDeltas = [[string[], string], string]
+export type PriceDeltas = [string, string]
 
 export type Proof = {
     readonly gamma: ProjPointType<bigint>

@@ -11,9 +11,7 @@ describe('PriceFeedProvider', () => {
                 onChainPrices,
                 offChainPrices
             )
-            expect(feed[0][0]).to.equal(
-                '0xc000000000000000000000000000000000000000000000000000000000000000'
-            )
+            expect(feed).to.equal('0xc0')
             expect(representation).to.equal('-')
         })
 
