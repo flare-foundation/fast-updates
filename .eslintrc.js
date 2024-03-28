@@ -28,6 +28,7 @@ module.exports = {
         '@typescript-eslint/require-await': 'warn',
         '@typescript-eslint/no-floating-promises': 'warn',
         '@typescript-eslint/no-unsafe-member-access': 'warn',
+        "@typescript-eslint/restrict-template-expressions": "warn",
         'import/order': [
             'error',
             {

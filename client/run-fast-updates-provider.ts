@@ -30,8 +30,8 @@ async function main(provider?: number): Promise<void> {
     if (providerId <= 0) throw Error('Data provider id must be greater than 0.')
 
     const logger = getOrCreateLogger(
-        'fast-update-provider-' + providerId,
-        'fast-update-provider-' + providerId
+        'fast-update-provider-' + providerId.toString(),
+        'fast-update-provider-' + providerId.toString()
     )
 
     // Load the FTSO parameters and contracts from the config file
@@ -100,7 +100,7 @@ async function main(provider?: number): Promise<void> {
     process.exit(0)
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
     console.error(error)
     process.exit(1)
 })

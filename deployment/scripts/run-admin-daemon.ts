@@ -71,7 +71,7 @@ export async function runAdminDaemon(
                             `AdvanceIncentive successful at block ${receipt.blockNumber}`
                         )
                     })
-                    .catch((error) => {
+                    .catch((error: unknown) => {
                         logger.error(`(advanceIncentive), ${error}`)
                     })
             )
@@ -83,8 +83,20 @@ export async function runAdminDaemon(
                             `FreeSubmitted successful at block ${receipt.blockNumber}`
                         )
                     })
-                    .catch((error) => {
+                    .catch((error: unknown) => {
                         logger.error(`(freeSubmitted), ${error}`)
+                    })
+            )
+            promises.push(
+                web3Provider
+                    .applySubmitted(2)
+                    .then((receipt: TransactionReceipt) => {
+                        logger.info(
+                            `ApplySubmitted successful at block ${receipt.blockNumber}`
+                        )
+                    })
+                    .catch((error: unknown) => {
+                        logger.error(`(applySubmitted), ${error}`)
                     })
             )
             promises.push(web3Provider.waitForBlock(blockNum + 1))

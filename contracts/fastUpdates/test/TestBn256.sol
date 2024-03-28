@@ -9,10 +9,6 @@ pragma experimental ABIEncoderV2;
 import "../lib/Bn256.sol";
 
 contract TestBn256 {
-    function publicG1Unmarshal(bytes memory m) public pure returns (Bn256.G1Point memory) {
-        return Bn256.g1Unmarshal(m);
-    }
-
     Bn256.G1Point g1 = Bn256.g1();
 
     function runHashingTest() public view {
@@ -70,16 +66,4 @@ contract TestBn256 {
     function publicG1ScalarMultiply(Bn256.G1Point memory a, uint256 s) public view returns (Bn256.G1Point memory c) {
         c = Bn256.scalarMultiply(a, s);
     }
-
-    function publicG1Compress(Bn256.G1Point memory a) public pure returns (bytes32) {
-        bytes32 c = Bn256.g1Compress(a);
-        return c;
-    }
-
-    function publicG1Decompress(bytes32 m) public view returns (Bn256.G1Point memory) {
-        return Bn256.g1Decompress(m);
-    }
 }
-
-// 0xaf919a67ba6e46b58978179552e7a3a673eddb24bacc2f6a5d7c2f74504e2ca6
-// 032f919a67ba6e46b58978179552e7a3a673eddb24bacc2f6a5d7c2f74504e2ca6

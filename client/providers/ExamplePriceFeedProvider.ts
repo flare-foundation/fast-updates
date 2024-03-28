@@ -126,13 +126,10 @@ export class ExamplePriceFeedProvider {
             feeds = feeds + feed.toString(16)
         }
 
-        feeds = feeds + '0'.repeat(64 - feeds.length)
-        const delta1 = '0x' + '0'.repeat(64)
-        const delta2 = '0x' + '0'.repeat(52)
-        const deltas: [string[], string] = [
-            ['0x' + feeds, delta1, delta1, delta1, delta1, delta1, delta1],
-            delta2,
-        ]
+        if (feeds.length % 2 == 1) {
+            feeds = feeds + '0'
+        }
+        const deltas: string = '0x' + feeds
 
         return [deltas, rep]
     }

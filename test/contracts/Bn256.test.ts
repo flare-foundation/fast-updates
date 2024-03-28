@@ -59,14 +59,5 @@ contract(
             expect(c.x.toString()).to.equal(cCheck.x.toString())
             expect(c.y.toString()).to.equal(cCheck.y.toString())
         })
-        it('should compress/decompress a point', async () => {
-            const r1 = randomInt(bn254.CURVE.n)
-            const a = bn254.ProjectivePoint.BASE.multiply(r1)
-
-            const aCompressed = g1compress(a)
-            const aCheck = await bn256Instance.publicG1Decompress(aCompressed)
-            expect(a.x.toString()).to.equal(aCheck.x.toString())
-            expect(a.y.toString()).to.equal(aCheck.y.toString())
-        })
     }
 )

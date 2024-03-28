@@ -33,8 +33,8 @@ type SortitionCredential = [string, [string, string], string, string]
 type FastUpdate = [
     string,
     [string, [string, string], string, string],
-    [string[], string],
     [number, string, string],
+    string,
 ]
 
 type SortitionPolicy = [string, string, number]
@@ -209,7 +209,7 @@ export class Web3Provider {
     public async submitUpdates(
         proof: Proof,
         replicate: string,
-        deltas: [string[], string],
+        deltas: string,
         submissionBlockNum: string,
         signature: BareSignature,
         addToNonce?: number
@@ -223,8 +223,8 @@ export class Web3Provider {
         const newFastUpdate: FastUpdate = [
             submissionBlockNum,
             sortitionCredential,
-            deltas,
             [signature.v, signature.r, signature.s],
+            deltas,
         ]
 
         const methodCall =
@@ -280,6 +280,28 @@ export class Web3Provider {
         const methodCall = this.contracts.fastUpdater.methods.freeSubmitted()
         return this.signAndFinalize(
             'freeSubmitted',
+            (this.contracts.fastUpdater['options'] as ContractOptions)
+                .address as string,
+            methodCall,
+            undefined,
+            undefined,
+            addToNonce
+        )
+    }
+
+    /**
+     * Calls the 'applySubmitted' method of the 'fastUpdater' contract.
+     * To be called by the daemon.
+     *
+     * @param addToNonce - Optional parameter to add to the nonce value.
+     * @returns A promise that resolves to a TransactionReceipt object.
+     */
+    public async applySubmitted(
+        addToNonce?: number
+    ): Promise<TransactionReceipt> {
+        const methodCall = this.contracts.fastUpdater.methods.applySubmitted()
+        return this.signAndFinalize(
+            'applySubmitted',
             (this.contracts.fastUpdater['options'] as ContractOptions)
                 .address as string,
             methodCall,

@@ -7,6 +7,7 @@ import type { FastUpdaterContract } from '../../typechain-truffle/contracts/fast
 import type { FlareSystemMockContract } from '../../typechain-truffle/contracts/fastUpdates/test/FlareSystemMock'
 import {
     ANCHOR_PRICES,
+    BACKLOG_LEN,
     BASE_RANGE,
     BASE_SAMPLE_SIZE,
     DURATION,
@@ -70,7 +71,8 @@ export async function deployContracts(
         flareSystemMock.address,
         fastUpdateIncentiveManager.address,
         ANCHOR_PRICES,
-        SUBMISSION_WINDOW
+        SUBMISSION_WINDOW,
+        BACKLOG_LEN
     )
     logger.info(`Deployed contract FastUpdater at ${fastUpdater.address}`)
 
