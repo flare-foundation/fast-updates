@@ -1,4 +1,4 @@
-import { RangeFPA, SampleFPA } from '../utils'
+import { RangeOrSampleFPA } from '../utils'
 
 export const EPOCH_LEN = 20 as const
 export const FEEDS = [0] as const
@@ -9,13 +9,13 @@ export const ANCHOR_PRICES = [7000, 10000, 20000, 30000]
 export const SUBMISSION_WINDOW = 10 as const
 
 // Incentive Manager params
-export const BASE_RANGE = RangeFPA(2 ** -8)
-export const BASE_SAMPLE_SIZE = SampleFPA(2)
+export const BASE_RANGE = RangeOrSampleFPA(2 ** -8)
+export const BASE_SAMPLE_SIZE = RangeOrSampleFPA(2)
 
 // Precision = (BASE_RANGE / BASE_SAMPLE_SIZE) * 2^15
 // Scale = (1 + BASE_RANGE / BASE_SAMPLE SIZE) * 2^15
 
-export const SAMPLE_INCREASE_LIMIT = SampleFPA(5)
+export const SAMPLE_INCREASE_LIMIT = RangeOrSampleFPA(5)
 export const RANGE_INCREASE_PRICE = 5 as const
 export const DURATION = 8 as const
 export const BACKLOG_LEN = 20 as const

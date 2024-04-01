@@ -27,6 +27,7 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager, G
     }
 
     function _setBaseSampleSize(FPA.SampleSize _sz) private {
+        require(FPA.check(_sz), "Base sample size too large");
         baseSampleSize = _sz;
     }
 
@@ -35,6 +36,7 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager, G
     }
 
     function _setBaseRange(FPA.Range _rn) private {
+        require(FPA.check(_rn), "Base range too large");
         baseRange = _rn;
     }
 
@@ -43,6 +45,7 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager, G
     }
 
     function _setSampleIncreaseLimit(FPA.SampleSize _lim) private {
+        require(FPA.check(_lim), "Sample increase limit too large");
         sampleIncreaseLimit = _lim;
     }
 
@@ -51,6 +54,7 @@ abstract contract IIFastUpdateIncentiveManager is IFastUpdateIncentiveManager, G
     }
 
     function _setRangeIncreasePrice(FPA.Fee _price) private {
+        require(FPA.check(_price), "Range increase price too large");
         rangeIncreasePrice = _price;
     }
 

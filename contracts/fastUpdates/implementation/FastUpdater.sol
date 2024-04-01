@@ -79,6 +79,7 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
             for (uint entry = 0; entry < 8; ++entry) {
                 newSlot <<= 32;
                 if (feed < _prices.length) {
+                    FPA.check(_prices[feed]);
                     newSlot |= bytes32(uint(FPA.Price.unwrap(_prices[feed])));
                 }
                 ++feed;
@@ -231,11 +232,11 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
                                     if eq(deltaReduced, 1) {
                                         // mul
                                         priceReduced := mul(priceReduced, scale)
-                                        priceReduced := shr(15, priceReduced)
+                                        priceReduced := shr(127, priceReduced)
                                     }
                                     if eq(deltaReduced, 3) {
                                         // div
-                                        priceReduced := shl(15, priceReduced)
+                                        priceReduced := shl(127, priceReduced)
                                         priceReduced := div(priceReduced, scale)
                                     }
                                 }
@@ -276,11 +277,11 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
                                 if eq(deltaReduced, 1) {
                                     // mul
                                     priceReduced := mul(priceReduced, scale)
-                                    priceReduced := shr(15, priceReduced)
+                                    priceReduced := shr(127, priceReduced)
                                 }
                                 if eq(deltaReduced, 3) {
                                     // div
-                                    priceReduced := shl(15, priceReduced)
+                                    priceReduced := shl(127, priceReduced)
                                     priceReduced := div(priceReduced, scale)
                                 }
                             }
@@ -391,11 +392,11 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
                         if eq(tmpVar, 1) {
                             // mul
                             price := mul(mload(add(add(_prices, 0x20), mul(j, 0x20))), scale)
-                            mstore(add(add(_prices, 0x20), mul(j, 0x20)), shr(15, price))
+                            mstore(add(add(_prices, 0x20), mul(j, 0x20)), shr(127, price))
                         }
                         if eq(tmpVar, 3) {
                             // div
-                            price := shl(15, mload(add(add(_prices, 0x20), mul(j, 0x20))))
+                            price := shl(127, mload(add(add(_prices, 0x20), mul(j, 0x20))))
                             mstore(add(add(_prices, 0x20), mul(j, 0x20)), div(price, scale))
                         }
                     }
@@ -426,11 +427,11 @@ contract FastUpdater is IIFastUpdater, CircularListManager {
                         if eq(tmpVar, 1) {
                             // mul
                             price := mul(mload(add(add(_prices, 0x20), mul(j, 0x20))), scale)
-                            mstore(add(add(_prices, 0x20), mul(j, 0x20)), shr(15, price))
+                            mstore(add(add(_prices, 0x20), mul(j, 0x20)), shr(127, price))
                         }
                         if eq(tmpVar, 3) {
                             // div
-                            price := shl(15, mload(add(add(_prices, 0x20), mul(j, 0x20))))
+                            price := shl(127, mload(add(add(_prices, 0x20), mul(j, 0x20))))
                             mstore(add(add(_prices, 0x20), mul(j, 0x20)), div(price, scale))
                         }
                     }

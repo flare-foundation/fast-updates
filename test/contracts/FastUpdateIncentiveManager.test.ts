@@ -54,16 +54,16 @@ contract(
 
         it('should get precision', async () => {
             const precision = await fastUpdateIncentiveManager.getPrecision()
-            // precision scaled for 2^(-15)
+            // precision scaled for 2^(-127)
             expect(precision).to.equal(
-                Math.floor((BASE_RANGE / BASE_SAMPLE_SIZE) * 2 ** 15)
+                (BigInt(BASE_RANGE) << 127n) / BigInt(BASE_SAMPLE_SIZE)
             )
         })
 
         it('should get scale', async () => {
             const scale = await fastUpdateIncentiveManager.getScale()
             expect(scale).to.equal(
-                Math.floor(2 ** 15 + (BASE_RANGE / BASE_SAMPLE_SIZE) * 2 ** 15)
+                (1n << 127n) + (BigInt(BASE_RANGE) << 127n) / BigInt(BASE_SAMPLE_SIZE)
             )
         })
 
@@ -92,12 +92,12 @@ contract(
 
             const precision = await fastUpdateIncentiveManager.getPrecision()
             expect(precision).to.equal(
-                Math.floor((newRange / newSampleSize) * 2 ** 15)
+                (BigInt(newRange) << 127n) / BigInt(newSampleSize)
             )
 
             const scale = await fastUpdateIncentiveManager.getScale()
             expect(scale).to.equal(
-                Math.floor(2 ** 15 + (newRange / newSampleSize) * 2 ** 15)
+                (1n << 127n) + (BigInt(newRange) << 127n) / BigInt(newSampleSize)
             )
         })
 

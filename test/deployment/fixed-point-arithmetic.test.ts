@@ -1,34 +1,18 @@
 import {
-    RangeFPA,
-    SampleFPA,
+    RangeOrSampleFPA,
 } from '../../deployment/utils/fixed-point-arithmetic'
 
-describe('RangeFPA', () => {
+describe('RangeOrSampleFPA', () => {
     it('should convert a range value to a fixed-point arithmetic representation', () => {
         const range = 0.5
-        const result = RangeFPA(range)
+        const result = RangeOrSampleFPA(range)
 
-        expect(result).to.equal(128)
+        expect(result).to.equal("0x8" + "0".repeat(29))
     })
 
     it('should throw an error if the range value is out of bounds', () => {
-        const range = 10000
+        const range = 256
 
-        expect(() => RangeFPA(range)).to.throw('range out of bound')
-    })
-})
-
-describe('SampleFPA', () => {
-    it('should convert a given range to a fixed-point number', () => {
-        const range = 0.25
-        const result = SampleFPA(range)
-
-        expect(result).to.equal(64)
-    })
-
-    it('should throw an error if the converted number is out of bounds', () => {
-        const range = 10000
-
-        expect(() => SampleFPA(range)).to.throw('sample out of bound')
+        expect(() => RangeOrSampleFPA(range)).to.throw("range or sample size too large")
     })
 })

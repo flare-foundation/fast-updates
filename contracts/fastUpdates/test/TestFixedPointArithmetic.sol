@@ -63,9 +63,8 @@ contract TestFixedPointArithmetic {
 
     // Multiplication/division tests
 
-    function mulScaleTest(FPA.Scale x, FPA.Scale y) public pure returns (FPA.Scale z1, FPA.Scale z2) {
-        z1 = FPA.mul(x, y);
-        z2 = FPA.div(x, y);
+    function mulScaleTest(FPA.Scale x, FPA.Scale y) public pure returns (FPA.Scale z) {
+        z = FPA.mul(x, y);
     }
     function mulPriceScaleTest(FPA.Price x, FPA.Scale y) public pure returns (FPA.Price z) {
         z = FPA.mul(x, y);

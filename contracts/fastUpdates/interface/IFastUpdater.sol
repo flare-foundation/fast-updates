@@ -15,8 +15,8 @@ interface IFastUpdater {
     }
 
     struct Deltas {
-        bytes32[] deltaSlots;
-    }
+    bytes32[] deltaSlots;
+}
 
     event FastUpdate(address indexed providerAddress);
 

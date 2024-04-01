@@ -60,7 +60,7 @@ contract FastUpdateIncentiveManager is IIFastUpdateIncentiveManager, IncreaseMan
     function processIncentiveOffer(
         IncentiveOffer calldata offer
     ) private returns (FPA.Fee contribution, FPA.Range rangeIncrease) {
-        require(msg.value >> 240 == 0, "Incentive offer value capped at 240 bits");
+        require(msg.value >> 120 == 0, "Incentive offer value capped at 120 bits");
         contribution = FPA.Fee.wrap(msg.value);
         rangeIncrease = offer.rangeIncrease;
 

@@ -13,8 +13,7 @@ import {
 import type { Proof, SortitionKey } from '../../client/utils'
 import { PATHS } from '../../deployment/config'
 import {
-    RangeFPA,
-    SampleFPA,
+    RangeOrSampleFPA,
     loadProviderAccounts,
     randomInt,
 } from '../../deployment/utils'
@@ -50,9 +49,9 @@ for (let i = 8; i < NUM_FEEDS; i++) {
 
 const VOTER_WEIGHT = 1000
 const SUBMISSION_WINDOW = 10
-const BASE_SAMPLE_SIZE = SampleFPA(16)
-const BASE_RANGE = RangeFPA(2 ** -5)
-const SAMPLE_INCREASE_LIMIT = SampleFPA(5)
+const BASE_SAMPLE_SIZE = 16
+const BASE_RANGE = 2**-5
+const SAMPLE_INCREASE_LIMIT = 5
 const SCALE = 1 + BASE_RANGE / BASE_SAMPLE_SIZE
 const RANGE_INCREASE_PRICE = 16
 const DURATION = 8
@@ -83,9 +82,9 @@ contract(
             fastUpdateIncentiveManager = await FastUpdateIncentiveManager.new(
                 governance.address,
                 governance.address,
-                BASE_SAMPLE_SIZE,
-                BASE_RANGE,
-                SAMPLE_INCREASE_LIMIT,
+                RangeOrSampleFPA(BASE_SAMPLE_SIZE),
+                RangeOrSampleFPA(BASE_RANGE),
+                RangeOrSampleFPA(SAMPLE_INCREASE_LIMIT),
                 RANGE_INCREASE_PRICE,
                 DURATION
             )
@@ -269,10 +268,10 @@ contract(
 
             // See effect of price updates made
             let pricesBN: BN[] = await fastUpdater.fetchCurrentPrices(feeds)
-            const prices: bigint[] = []
+            const prices: number[] = []
             for (let i = 0; i < NUM_FEEDS; i++) {
-                prices[i] = BigInt(pricesBN[i].toString())
-                let newPrice = Number(startingPrices[i])
+                prices[i] = pricesBN[i]!.toNumber()
+                let newPrice = startingPrices[i]!
                 for (let j = 0; j < numSubmitted; j++) {
                     let delta = feed[i]
                     if (j == 1) {
@@ -280,31 +279,27 @@ contract(
                     }
 
                     if (delta == '+') {
-                        newPrice = Math.floor(
-                            (newPrice * Math.floor(SCALE * 2 ** 15)) / 2 ** 15
-                        )
+                        newPrice *= SCALE
                     }
                     if (delta == '-') {
-                        newPrice = Math.floor(
-                            (newPrice * 2 ** 15) / (SCALE * 2 ** 15)
-                        )
+                        newPrice /= SCALE
                     }
-                    // console.log(newPrice, delta, i)
+                    newPrice = Math.floor(newPrice)
                 }
 
-                expect(Number(prices[i])).to.be.equal(newPrice)
+                expect(prices[i]).to.be.equal(newPrice)
             }
 
             console.log('applying deltas')
             const tx = await fastUpdater.applySubmitted({
-                from: accounts[0].address,
+                from: accounts[0]!.address,
             })
             // console.log('cost2', tx.receipt.gasUsed)
 
             pricesBN = await fastUpdater.fetchCurrentPrices.call(feeds)
             for (let i = 0; i < NUM_FEEDS; i++) {
-                prices[i] = BigInt(pricesBN[i].toString())
-                let newPrice = Number(startingPrices[i])
+                prices[i] = pricesBN[i]!.toNumber()
+                let newPrice = startingPrices[i]!
                 for (let j = 0; j < numSubmitted; j++) {
                     let delta = feed[i]
                     if (j == 1) {
@@ -312,18 +307,14 @@ contract(
                     }
 
                     if (delta == '+') {
-                        newPrice = Math.floor(
-                            (newPrice * Math.floor(SCALE * 2 ** 15)) / 2 ** 15
-                        )
+                        newPrice *= SCALE
                     }
                     if (delta == '-') {
-                        newPrice = Math.floor(
-                            (newPrice * 2 ** 15) / (SCALE * 2 ** 15)
-                        )
+                        newPrice /= SCALE
                     }
-                    // console.log(newPrice, delta, i)
+                    newPrice = Math.floor(newPrice)
                 }
-                expect(Number(prices[i])).to.be.equal(newPrice)
+                expect(prices[i]).to.be.equal(newPrice)
             }
         })
     }
