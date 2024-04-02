@@ -11,10 +11,10 @@ poetry install --no-root
 ## Run
 
 ```bash
-poetry run python -m app
+poetry run python -m app -l ../logs
 ```
 
-Internally the app looks for the logs folder (default `../logs`) and starts a server on port 8051.
+Internally the app looks for the logs folder and starts a server on a port (default: 8051).
 
 To modify either of these use the `-l` and `-p` flags.
 

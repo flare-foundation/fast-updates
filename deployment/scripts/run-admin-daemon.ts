@@ -72,7 +72,7 @@ export async function runAdminDaemon(
                         )
                     })
                     .catch((error: unknown) => {
-                        logger.error(`(advanceIncentive), ${error}`)
+                        logger.error(`(advanceIncentive), ${error as string}`)
                     })
             )
             promises.push(
@@ -84,7 +84,7 @@ export async function runAdminDaemon(
                         )
                     })
                     .catch((error: unknown) => {
-                        logger.error(`(freeSubmitted), ${error}`)
+                        logger.error(`(freeSubmitted), ${error as string}`)
                     })
             )
             promises.push(
@@ -96,7 +96,7 @@ export async function runAdminDaemon(
                         )
                     })
                     .catch((error: unknown) => {
-                        logger.error(`(applySubmitted), ${error}`)
+                        logger.error(`(applySubmitted), ${error as string}`)
                     })
             )
             promises.push(web3Provider.waitForBlock(blockNum + 1))

@@ -3,7 +3,7 @@ import path from 'path'
 import { bn254 } from '@noble/curves/bn254'
 import { expect } from 'chai'
 
-import { g1compress, randomInt } from '../../client/utils'
+import { randomInt } from '../../client/utils'
 import type {
     TestBn256Contract,
     TestBn256Instance,

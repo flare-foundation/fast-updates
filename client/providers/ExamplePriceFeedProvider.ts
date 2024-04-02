@@ -19,11 +19,6 @@ export class ExamplePriceFeedProvider {
         private readonly precision: number = 0,
         private readonly genesisTimeSec: number = 0
     ) {
-        if (numFeeds > 1) {
-            throw new Error(
-                'Number of feeds should be at most 1. Temporary limit in place.'
-            )
-        }
         if (precision === 0) {
             this.logger.info(
                 `PriceFeedProvider (observer) initialized with ${numFeeds} feeds at genesis time ${genesisTimeSec}`
@@ -81,10 +76,7 @@ export class ExamplePriceFeedProvider {
         onChainPrices: number[],
         offChainPrices: number[]
     ): PriceDeltas {
-        if (
-            onChainPrices.length != offChainPrices.length ||
-            onChainPrices.length != 1
-        ) {
+        if (onChainPrices.length != offChainPrices.length) {
             throw new Error('Arrays should be of equal length')
         }
 

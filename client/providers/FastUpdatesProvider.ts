@@ -1,7 +1,6 @@
 import type { BytesLike } from 'ethers'
 import { sha256 } from 'ethers'
 import type { TransactionReceipt } from 'web3-types'
-import { encodePacked } from 'web3-utils'
 import type { Logger } from 'winston'
 
 import { FEEDS } from '../../deployment/config'
@@ -129,7 +128,7 @@ export class FastUpdatesProvider {
             this.privateKey
         )
 
-        const receipt = await this.provider.submitUpdates(
+        return this.provider.submitUpdates(
             proof,
             replicate,
             deltas,
@@ -137,10 +136,6 @@ export class FastUpdatesProvider {
             signature,
             addToNonce
         )
-        this.logger.info(
-            `Gas consumed by submitUpdate ${receipt.gasUsed.toString()}`
-        )
-        return receipt
     }
 
     /**
@@ -167,58 +162,48 @@ export class FastUpdatesProvider {
     ): Promise<void> {
         let addToNonce = 0
         const blockNumStr = blockNum.toString()
-        const cutoff = await this.provider.getCurrentScoreCutoff()
+        const cutoff = BigInt(await this.provider.getCurrentScoreCutoff())
 
-        const promises = []
-        for (let rep = 0; rep < myWeight; rep++) {
-            const repStr = rep.toString()
+        for (let replicate = 0; replicate < myWeight; replicate++) {
+            const replicateStr = replicate.toString()
             const r: bigint = calculateRandomness(
                 this.key,
                 seed,
                 blockNumStr,
-                repStr
+                replicateStr
             )
 
-            if (r < BigInt(cutoff)) {
+            if (r < cutoff) {
                 const proof: Proof = generateVerifiableRandomnessProof(
                     this.key,
                     seed,
                     blockNumStr,
-                    repStr
+                    replicateStr
                 )
-
-                this.logger.debug(
-                    `Block: ${blockNum}, Rep: ${rep}, Update: ${deltas[1]}`
+                this.logger.info(
+                    `Block: ${blockNum}, Rep: ${replicate}, Update: ${deltas[1]}`
                 )
-                promises.push(
-                    this.submitUpdates(
-                        proof,
-                        repStr,
-                        deltas[0],
-                        blockNumStr,
-                        addToNonce
-                    )
-                        .then((receipt: TransactionReceipt) => {
-                            this.logger.info(
-                                `Block: ${receipt.blockNumber}, Update successful, ${deltas[1]}`
-                            )
-                        })
-                        .catch((error: unknown) => {
-                            this.logger.error(
-                                `Block: ${blockNum}, Failed to submit updates ${error}`
-                            )
-                        })
+                await this.submitUpdates(
+                    proof,
+                    replicateStr,
+                    deltas[0],
+                    blockNumStr,
+                    addToNonce
                 )
+                    .then((receipt: TransactionReceipt) => {
+                        this.logger.info(
+                            `Block: ${receipt.blockNumber}, Update successful, ${deltas[1]}`
+                        )
+                    })
+                    .catch((error: unknown) => {
+                        this.logger.error(
+                            `Block: ${blockNum}, Failed to submit updates ${error as string}`
+                        )
+                    })
                 addToNonce++
-                break // to avoid problems we let the client submit only one update per block
+                break
             }
         }
-        // // Only submit updates for the current block
-        // const currentBlockNum = await this.provider.getBlockNumber()
-        // if (currentBlockNum === blockNum) {
-
-        // }
-        await Promise.all(promises)
     }
 
     /**
@@ -263,15 +248,14 @@ export class FastUpdatesProvider {
                     let registered = false
                     try {
                         registered = await this.reRegister(epoch)
-                    } catch (error) {
+                    } catch (error: unknown) {
                         this.logger.error(
-                            `Block: ${blockNum}, Failed to re-register ${error}`
+                            `Block: ${blockNum}, Failed to re-register ${error as string}`
                         )
                     }
                     if (registered) {
                         // If successful, wait for the next epoch
                         await this.provider.waitForNewEpoch(this.epochLen)
-                        continue
                     } else {
                         // If failed, wait for the next block to try again
                         await this.provider.waitForBlock(blockNum + 1)
@@ -318,9 +302,9 @@ export class FastUpdatesProvider {
                         BigInt(blockNum),
                         currentBaseSeed.toString()
                     )
-                } catch (error) {
+                } catch (error: unknown) {
                     this.logger.error(
-                        `Block: ${blockNum}, Failed to submit update ${error}`
+                        `Block: ${blockNum}, Failed to submit update ${error as string}`
                     )
                 }
             }

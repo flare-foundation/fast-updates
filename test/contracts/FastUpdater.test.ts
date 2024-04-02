@@ -3,7 +3,6 @@ import path from 'path'
 import type { BytesLike } from 'ethers'
 import { sha256 } from 'ethers'
 import type { Web3Account } from 'web3-eth-accounts'
-import { encodePacked } from 'web3-utils'
 
 import { signMessage } from '../../client/utils'
 import {
@@ -50,7 +49,7 @@ for (let i = 8; i < NUM_FEEDS; i++) {
 const VOTER_WEIGHT = 1000
 const SUBMISSION_WINDOW = 10
 const BASE_SAMPLE_SIZE = 16
-const BASE_RANGE = 2**-5
+const BASE_RANGE = 2 ** -5
 const SAMPLE_INCREASE_LIMIT = 5
 const SCALE = 1 + BASE_RANGE / BASE_SAMPLE_SIZE
 const RANGE_INCREASE_PRICE = 16
@@ -227,12 +226,9 @@ contract(
                             }
 
                             // Submit updates to the contract
-                            const tx = await fastUpdater.submitUpdates(
-                                newFastUpdate,
-                                {
-                                    from: accounts[i + 1]?.address ?? '',
-                                }
-                            )
+                            await fastUpdater.submitUpdates(newFastUpdate, {
+                                from: accounts[i + 1]?.address ?? '',
+                            })
                             // console.log('cost', tx.receipt.gasUsed)
 
                             // let caughtError = false
@@ -270,8 +266,8 @@ contract(
             let pricesBN: BN[] = await fastUpdater.fetchCurrentPrices(feeds)
             const prices: number[] = []
             for (let i = 0; i < NUM_FEEDS; i++) {
-                prices[i] = pricesBN[i]!.toNumber()
-                let newPrice = startingPrices[i]!
+                prices[i] = (pricesBN[i] as BN).toNumber()
+                let newPrice = startingPrices[i] as number
                 for (let j = 0; j < numSubmitted; j++) {
                     let delta = feed[i]
                     if (j == 1) {
@@ -291,15 +287,15 @@ contract(
             }
 
             console.log('applying deltas')
-            const tx = await fastUpdater.applySubmitted({
-                from: accounts[0]!.address,
+            await fastUpdater.applySubmitted({
+                from: (accounts[0] as Web3Account).address,
             })
             // console.log('cost2', tx.receipt.gasUsed)
 
             pricesBN = await fastUpdater.fetchCurrentPrices.call(feeds)
             for (let i = 0; i < NUM_FEEDS; i++) {
-                prices[i] = pricesBN[i]!.toNumber()
-                let newPrice = startingPrices[i]!
+                prices[i] = (pricesBN[i] as BN).toNumber()
+                let newPrice = startingPrices[i] as number
                 for (let j = 0; j < numSubmitted; j++) {
                     let delta = feed[i]
                     if (j == 1) {

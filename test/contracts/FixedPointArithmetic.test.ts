@@ -105,8 +105,14 @@ contract(
         it('should multiply Scale values', async () => {
             // 47 is the largest exponent for a Number with a whole number of bytes
             // 45 is small enough to prevent overflow.
-            const xS = "0x" + Math.floor(2 ** 47 + Math.random() * 2 ** 45).toString(16) + "0".repeat(20)
-            const yS = "0x" + Math.floor(2 ** 47 + Math.random() * 2 ** 45).toString(16) + "0".repeat(20)
+            const xS =
+                '0x' +
+                Math.floor(2 ** 47 + Math.random() * 2 ** 45).toString(16) +
+                '0'.repeat(20)
+            const yS =
+                '0x' +
+                Math.floor(2 ** 47 + Math.random() * 2 ** 45).toString(16) +
+                '0'.repeat(20)
 
             const c = await fpaInstance.mulScaleTest(xS, yS)
 
@@ -118,7 +124,10 @@ contract(
         })
         it('should multiply Price and Scale values', async () => {
             const xN = Math.floor(Math.random() * 2 ** 32)
-            const yS = "0x" + Math.floor(2 ** 47 + Math.random() * 2 ** 45).toString(16) + "0".repeat(20)
+            const yS =
+                '0x' +
+                Math.floor(2 ** 47 + Math.random() * 2 ** 45).toString(16) +
+                '0'.repeat(20)
 
             const c = await fpaInstance.mulPriceScaleTest(xN, yS)
 
@@ -128,8 +137,14 @@ contract(
             expect(c.toString(16)).to.equal(((x * y) >> 127n).toString(16))
         })
         it('should multiply Fee and Range values', async () => {
-            const xS = "0x" + Math.floor(Math.random() * 2 ** 39).toString(16) + "0".repeat(20)
-            const yS = "0x" + Math.floor(Math.random() * 2 ** 47).toString(16) + "0".repeat(20)
+            const xS =
+                '0x' +
+                Math.floor(Math.random() * 2 ** 39).toString(16) +
+                '0'.repeat(20)
+            const yS =
+                '0x' +
+                Math.floor(Math.random() * 2 ** 47).toString(16) +
+                '0'.repeat(20)
 
             const c = await fpaInstance.mulFeeRangeTest(xS, yS)
 
@@ -139,7 +154,10 @@ contract(
             expect(c.toString(16)).to.equal(((x * y) >> 120n).toString(16))
         })
         it('should multiply Fractional and Fee values', async () => {
-            const xS = "0x" + Math.floor(Math.random() * 2 ** 47).toString(16) + "0".repeat(20)
+            const xS =
+                '0x' +
+                Math.floor(Math.random() * 2 ** 47).toString(16) +
+                '0'.repeat(20)
             const yN = Math.floor(Math.random() * 2 ** 32)
 
             const c = await fpaInstance.mulFractionalFeeTest(xS, yN)
@@ -150,8 +168,14 @@ contract(
             expect(c.toString(16)).to.equal(((x * y) >> 128n).toString(16))
         })
         it('should multiply Fractional and SampleSize values', async () => {
-            const xS = "0x" + Math.floor(Math.random() * 2 ** 47).toString(16) + "0".repeat(20)
-            const yS = "0x" + Math.floor(Math.random() * 2 ** 47).toString(16) + "0".repeat(20)
+            const xS =
+                '0x' +
+                Math.floor(Math.random() * 2 ** 47).toString(16) +
+                '0'.repeat(20)
+            const yS =
+                '0x' +
+                Math.floor(Math.random() * 2 ** 47).toString(16) +
+                '0'.repeat(20)
 
             const c = await fpaInstance.mulFractionalSampleSizeTest(xS, yS)
 
@@ -162,9 +186,9 @@ contract(
         })
         it('should divide Range values', async () => {
             const y0 = Math.floor(Math.random() * 2 ** 47)
-            const yS = "0x" + y0.toString(16) + "0".repeat(20)
+            const yS = '0x' + y0.toString(16) + '0'.repeat(20)
             const x0 = Math.floor(Math.random() * y0)
-            const xS = "0x" + x0.toString(16) + "0".repeat(20)
+            const xS = '0x' + x0.toString(16) + '0'.repeat(20)
 
             const c = await fpaInstance.divRangeTest(xS, yS)
 
@@ -175,9 +199,9 @@ contract(
         })
         it('should divide Fee values', async () => {
             const y0 = Math.floor(Math.random() * 2 ** 47)
-            const yS = "0x" + y0.toString(16) + "0".repeat(20)
+            const yS = '0x' + y0.toString(16) + '0'.repeat(20)
             const x0 = Math.floor(Math.random() * y0)
-            const xS = "0x" + x0.toString(16) + "0".repeat(20)
+            const xS = '0x' + x0.toString(16) + '0'.repeat(20)
 
             const c = await fpaInstance.divRangeTest(xS, yS)
 
@@ -188,9 +212,9 @@ contract(
         })
         it('should divide Range and SampleSize values', async () => {
             const y0 = Math.floor(Math.random() * 2 ** 47)
-            const yS = "0x" + y0.toString(16) + "0".repeat(20)
+            const yS = '0x' + y0.toString(16) + '0'.repeat(20)
             const x0 = Math.floor(Math.random() * y0)
-            const xS = "0x" + x0.toString(16) + "0".repeat(20)
+            const xS = '0x' + x0.toString(16) + '0'.repeat(20)
 
             const c = await fpaInstance.divRangeTest(xS, yS)
 
@@ -201,7 +225,10 @@ contract(
         })
         it('should divide Price and Scale values', async () => {
             const xN = Math.floor(Math.random() * 2 ** 32)
-            const yS = "0x" + Math.floor(Math.random() * xN).toString(16) + "0".repeat(20)
+            const yS =
+                '0x' +
+                Math.floor(Math.random() * xN).toString(16) +
+                '0'.repeat(20)
 
             const c = await fpaInstance.mulPriceScaleTest(xN, yS)
 
@@ -214,7 +241,10 @@ contract(
         // Comparison and conversion tests
 
         it('should convert Precision to Scale', async () => {
-            const xS = "0x" + Math.floor(Math.random() * 2 ** 46).toString(16) + "0".repeat(20)
+            const xS =
+                '0x' +
+                Math.floor(Math.random() * 2 ** 46).toString(16) +
+                '0'.repeat(20)
 
             const c = await fpaInstance.scaleWithPrecisionTest(xS)
 

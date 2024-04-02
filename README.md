@@ -6,10 +6,10 @@ This repo contains MVP of an implementation of the new Fast Updates proposal.
 
 ### Node.JS
 
-Install [NVM](https://github.com/nvm-sh/nvm), and Node v20 (LTS):
+Install [NVM](https://github.com/nvm-sh/nvm), and Node v18 (LTS):
 
 ```bash
-nvm install 20
+nvm install 18
 ```
 
 ### Yarn

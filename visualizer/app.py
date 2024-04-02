@@ -4,15 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import dash_bootstrap_components as dbc
+import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, callback, dash_table, dcc, html
 from plotly.subplots import make_subplots
 
-from helpers import (
-    get_log_paths,
-    get_price_feeds,
-    get_providers_status,
-)
+from io_handler import LogfileIOHandler
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(
@@ -22,7 +19,7 @@ parser.add_argument(
     "-l",
     "--logpath",
     dest="logpath",
-    default=Path("..", "logs"),
+    default=None,
     type=Path,
     help="Path to the logs folder",
 )
@@ -30,8 +27,10 @@ parser.add_argument(
     "-p", "--port", dest="port", type=int, default=8051, help="Port to run the app on"
 )
 args = parser.parse_args()
-LOGPATH = args.logpath
 PORT = args.port
+
+if args.logpath:
+    handler = LogfileIOHandler(args.logpath)
 
 
 @callback(
@@ -63,10 +62,8 @@ def update(
         tuple[list[dict[Hashable, Any]], go.Figure, go.Figure]: A tuple
         containing the updated table, feeds figure, and status figure.
     """
-    daemon_logpath, provider_logpaths = get_log_paths(LOGPATH)
-
-    # Parse logfile and create table and graph
-    df = get_price_feeds(daemon_logpath)
+    # Create table and graph
+    df = handler.get_price_feeds()
     num_feeds = len(df.columns) // 2
 
     # Only show the last 50 blocks
@@ -77,7 +74,7 @@ def update(
     if num_feeds < 3:
         num_rows, num_cols = 1, num_feeds
     else:
-        num_rows, num_cols = num_feeds // 2, 2
+        num_rows, num_cols = (num_feeds + 1) // 2, 2
 
     # Create DataTable
     table = df.iloc[::-1].reset_index().to_dict("records")
@@ -94,6 +91,7 @@ def update(
                 "x": df.index,
                 "y": df[f"FastUpdateFeed_{idx}"],
                 "name": f"Fast Update (Feed {idx})",
+                "line": {"color": f"{px.colors.qualitative.Plotly[0]}"},
             },
             row=(idx // 2) + 1,
             col=(idx % 2) + 1,
@@ -103,6 +101,7 @@ def update(
                 "x": df.index,
                 "y": df[f"ActualFeed_{idx}"],
                 "name": f"Actual (Feed {idx})",
+                "line": {"color": f"{px.colors.qualitative.Plotly[1]}"},
             },
             row=(idx // 2) + 1,
             col=(idx % 2) + 1,
@@ -121,7 +120,9 @@ def update(
                 marker={"color": "#444"},
                 line={"width": 0},
                 showlegend=False,
-            )
+            ),
+            row=(idx // 2) + 1,
+            col=(idx % 2) + 1,
         )
         feeds_fig.add_trace(
             go.Scatter(
@@ -134,7 +135,9 @@ def update(
                 fillcolor="rgba(68, 68, 68, 0.3)",
                 fill="tonexty",
                 showlegend=False,
-            )
+            ),
+            row=(idx // 2) + 1,
+            col=(idx % 2) + 1,
         )
     feeds_fig.update_layout(
         xaxis_title="Block Number",
@@ -157,7 +160,7 @@ def update(
             {
                 "x": df.index,
                 "y": y,
-                "name": f"Feed {idx} (med={y.median():.1f} bps, avg={y.mean():.1f} bps)",
+                "name": f"Feed {idx} (med={y.median():.1f} bps,avg={y.mean():.1f} bps)",
             },
             row=1,
             col=1,
@@ -170,7 +173,7 @@ def update(
     )
 
     # Create Graph for Provider Status
-    status_dict = get_providers_status(provider_logpaths)
+    status_dict = handler.get_providers_status()
     status_fig = make_subplots(rows=1, cols=1)
     for provider_id, status in status_dict.items():
         pct_failures = sum(status.values()) / len(status) if len(status) != 0 else 0
@@ -218,8 +221,8 @@ app.layout = dbc.Container(
                         dcc.Slider(
                             id="sd-slider",
                             min=0,
-                            max=2,
-                            step=0.25,
+                            max=3,
+                            step=0.5,
                             value=1,
                             tooltip={"template": "SD={value}"},
                         ),

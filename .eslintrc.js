@@ -19,6 +19,13 @@ module.exports = {
         'visualizer',
     ],
     rules: {
+        '@typescript-eslint/restrict-template-expressions': [
+            'error',
+            {
+                allowNumber: true,
+                allowBoolean: true,
+            },
+        ],
         '@typescript-eslint/explicit-function-return-type': 'warn',
         '@typescript-eslint/explicit-module-boundary-types': 'warn',
         '@typescript-eslint/no-explicit-any': 'warn',
@@ -28,7 +35,6 @@ module.exports = {
         '@typescript-eslint/require-await': 'warn',
         '@typescript-eslint/no-floating-promises': 'warn',
         '@typescript-eslint/no-unsafe-member-access': 'warn',
-        "@typescript-eslint/restrict-template-expressions": "warn",
         'import/order': [
             'error',
             {
