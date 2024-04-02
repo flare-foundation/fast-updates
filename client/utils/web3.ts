@@ -48,7 +48,6 @@ export function createWeb3Instance(rpcLink: string, logger?: Logger): Web3 {
         logger?.info(`Connected to WebSocket provider: ${url.href}`)
     }
     const web3 = new Web3(provider)
-    web3.eth.handleRevert = true
     return web3
 }
 

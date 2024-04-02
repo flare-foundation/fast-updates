@@ -1,8 +1,14 @@
 {
-    "name": "hardhat-project",
+    "name": "flare-fast-updates-client",
+    "version": "0.0.1",
+    "description": "Client for fast updates protocol on Flare",
+    "repository": {
+        "type": "git",
+        "url": "git+https://gitlab.com/flarenetwork/fast-updates.git"
+    },
     "license": "MIT",
     "engines": {
-        "node": "=20"
+        "node": "<20"
     },
     "scripts": {
         "compile": "yarn hardhat compile && yarn typechain-truffle-v5 && yarn typechain-web3-v1",
@@ -20,18 +26,19 @@
         "@nomicfoundation/hardhat-ethers": "^3.0.5",
         "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
         "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-        "@nomicfoundation/hardhat-verify": "^2.0.4",
+        "@nomicfoundation/hardhat-verify": "^2.0.5",
         "@nomicfoundation/hardhat-web3-v4": "^1.0.0",
         "@nomiclabs/hardhat-truffle5": "^2.0.7",
         "@nomiclabs/hardhat-web3": "^2.0.0",
         "@typechain/ethers-v6": "^0.5.1",
+        "@typechain/hardhat": "^9.1.0",
         "@typechain/truffle-v5": "^8.0.7",
         "@typechain/web3-v1": "^6.0.7",
-        "@types/chai": "^4.3.12",
+        "@types/chai": "^4.3.14",
         "@types/mocha": "^10.0.6",
-        "@types/node": "^20.11.21",
-        "@typescript-eslint/eslint-plugin": "^7.1.0",
-        "@typescript-eslint/parser": "^7.1.0",
+        "@types/node": "^20.12.2",
+        "@typescript-eslint/eslint-plugin": "^7.4.0",
+        "@typescript-eslint/parser": "^7.4.0",
         "chai": "^4.4.1",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
@@ -40,18 +47,22 @@
         "hardhat-gas-reporter": "^1.0.10",
         "nyc": "^15.1.0",
         "prettier": "^3.2.5",
-        "solidity-coverage": "^0.8.9",
+        "solidity-coverage": "^0.8.11",
         "ts-node": "^10.9.2",
         "typechain": "^8.3.2",
-        "typescript": "^5.3.3"
+        "typescript": "^5.4.3"
     },
     "dependencies": {
-        "@openzeppelin/contracts": "^5.0.1",
+        "@openzeppelin/contracts": "^5.0.2",
         "dotenv": "^16.4.5",
         "ethers": "^6.11.1",
-        "hardhat": "^2.20.1",
-        "web3": "^4.5.0",
-        "winston": "^3.11.0"
+        "hardhat": "^2.22.2",
+        "truffle": "^5.11.5",
+        "web3": "^4.7.0",
+        "web3-core": "^1.0.0",
+        "web3-eth-contract": "^1.0.0",
+        "web3-utils": "^1.0.0",
+        "winston": "^3.13.0"
     },
-    "packageManager": "yarn@4.1.0"
+    "packageManager": "yarn@4.1.1"
 }

@@ -63,7 +63,8 @@ contract(
         it('should get scale', async () => {
             const scale = await fastUpdateIncentiveManager.getScale()
             expect(scale).to.equal(
-                (1n << 127n) + (BigInt(BASE_RANGE) << 127n) / BigInt(BASE_SAMPLE_SIZE)
+                (1n << 127n) +
+                    (BigInt(BASE_RANGE) << 127n) / BigInt(BASE_SAMPLE_SIZE)
             )
         })
 
@@ -97,7 +98,8 @@ contract(
 
             const scale = await fastUpdateIncentiveManager.getScale()
             expect(scale).to.equal(
-                (1n << 127n) + (BigInt(newRange) << 127n) / BigInt(newSampleSize)
+                (1n << 127n) +
+                    (BigInt(newRange) << 127n) / BigInt(newSampleSize)
             )
         })
 

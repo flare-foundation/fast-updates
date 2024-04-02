@@ -1,5 +1,4 @@
 import type Web3 from 'web3'
-import type { ContractOptions } from 'web3'
 import type { Web3Account } from 'web3-eth-accounts'
 import type { Transaction, TransactionReceipt } from 'web3-types'
 
@@ -187,8 +186,7 @@ export class Web3Provider {
             )
         return this.signAndFinalize(
             'RegisterAsAVoter',
-            (this.contracts.voterRegistry['options'] as ContractOptions)
-                .address as string,
+            this.contracts.voterRegistry['options'].address,
             methodCall,
             undefined,
             undefined,
@@ -232,8 +230,7 @@ export class Web3Provider {
 
         return this.signAndFinalize(
             'submitUpdates',
-            (this.contracts.fastUpdater['options'] as ContractOptions)
-                .address as string,
+            this.contracts.fastUpdater['options'].address,
             methodCall,
             undefined,
             undefined,
@@ -255,11 +252,8 @@ export class Web3Provider {
             this.contracts.fastUpdateIncentiveManager.methods.advance()
         return this.signAndFinalize(
             'advance',
-            (
-                this.contracts.fastUpdateIncentiveManager[
-                    'options'
-                ] as ContractOptions
-            ).address as string,
+
+            this.contracts.fastUpdateIncentiveManager['options'].address,
             methodCall,
             undefined,
             undefined,
@@ -280,8 +274,7 @@ export class Web3Provider {
         const methodCall = this.contracts.fastUpdater.methods.freeSubmitted()
         return this.signAndFinalize(
             'freeSubmitted',
-            (this.contracts.fastUpdater['options'] as ContractOptions)
-                .address as string,
+            this.contracts.fastUpdater['options'].address,
             methodCall,
             undefined,
             undefined,
@@ -302,8 +295,7 @@ export class Web3Provider {
         const methodCall = this.contracts.fastUpdater.methods.applySubmitted()
         return this.signAndFinalize(
             'applySubmitted',
-            (this.contracts.fastUpdater['options'] as ContractOptions)
-                .address as string,
+            this.contracts.fastUpdater['options'].address,
             methodCall,
             undefined,
             undefined,

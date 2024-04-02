@@ -67,10 +67,7 @@ jspm_packages/
 .vscode
 
 # yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
+.yarn
 .pnp.*
 
 # coverage
@@ -78,14 +75,24 @@ coverage
 coverage.json
 
 # typing
+
+# typing
 typechain
 typechain-types
+typechain-truffle
+typechain-web3
 typechain-truffle
 typechain-web3
 
 # Hardhat files
 cache
 artifacts
+nul
+
+# other files
+deployment/config/deployed-contracts/deployed-contracts.json
+
+
 nul
 
 # other files

@@ -7,8 +7,12 @@
 export function RangeOrSampleFPA(x: number): string {
     const xInteger = Math.floor(x)
     const xFractional = x - xInteger
-    const fractionalDigits = xFractional.toString(16).substring(2).padEnd(30,"0")
+    const fractionalDigits = xFractional
+        .toString(16)
+        .substring(2)
+        .padEnd(30, '0')
     const integerDigits = xInteger.toString(16)
-    if (integerDigits.length > 2) throw new Error("range or sample size too large")
-    return "0x" + (integerDigits + fractionalDigits).replace(/^0+/, "")
+    if (integerDigits.length > 2)
+        throw new Error('range or sample size too large')
+    return '0x' + (integerDigits + fractionalDigits).replace(/^0+/, '')
 }

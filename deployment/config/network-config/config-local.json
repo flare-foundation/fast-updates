@@ -1,5 +1,5 @@
 {
-    "rpcUrl": "http://127.0.0.1:8545/",
+    "rpcUrl": "ws://127.0.0.1:8545/",
     "gasLimit": "2500000",
     "gasPriceMultiplier": 1.2
 }

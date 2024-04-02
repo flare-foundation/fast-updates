@@ -266,3 +266,5 @@ fabric.properties
 *.dat
 
 .ruff_cache
+
+**/__pycache__/
