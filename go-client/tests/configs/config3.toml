@@ -1,0 +1,35 @@
+[client]
+private_key = "0x3470bca8ba3507255a31d99a04ae7ed047974c1aba721021a0dfdcffa29a685c"
+sortition_private_key = "0x3470bca8ba3507255a31d99a04ae7ed047974c1aba721021a0dfdcffa29a685c"
+fast_updater_address = "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
+fast_updates_configuration_address = "0x06bA8d8af0dF898D0712DffFb0f862cC51AF45c2"
+submission_address = "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
+flare_system_manager = "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
+incentive_manager_address = "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
+submission_window = 8
+advance_blocks = 0
+max_weight = 256
+value_provider_base_url = "http://host.docker.internal:3101/"
+
+[transactions]
+accounts = [
+    "0x47f234638c3bb44e3a35dcd57b7e57727f301caaf9232d4661763a685d3aa5d6",
+    "0x4f57fb560c0ac60b8556a0ddd08a04befb4a3c93d0a62e6923b3b74c9c45a0ec",
+    "0x9af36beedf7efdedccb631bf95c2b4e14e0fb6b6af4f89f89ff30001f7510bee",
+]
+gas_limit = 8000000
+value = 0
+gas_price_multiplier = 1.2
+
+[logger]
+level = "INFO"
+file = "./logger/logs/fast_updates_client3.log"
+console = true
+
+[chain]
+# node_url = "http://ganache:8545/"
+# chain_id = 1337
+node_url = "http://host.docker.internal:8545/"
+chain_id = 31337
+# node_url = "https://coston2-api.flare.network/ext/C/rpc"
+# chain_id = 114

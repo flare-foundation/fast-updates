@@ -1,7 +1,0 @@
-version: '3.8'
-
-services:
-    test:
-        container_name: 'test'
-        image: fast-updates
-        command: bash -c "yarn test"

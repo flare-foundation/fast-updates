@@ -1,5 +1,0 @@
-{
-    "rpcUrl": "https://coston2-api.flare.network/ext/C/rpc",
-    "gasLimit": "2500000",
-    "gasPriceMultiplier": 1.2
-}

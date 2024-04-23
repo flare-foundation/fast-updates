@@ -1,0 +1,36 @@
+# This file serves as a template for the configuration file. Copy it and edit the values as needed.
+# Use --config parameter to specify the path to the configuration file.
+
+[client]
+private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+fast_updater_address = "0x8280D40C9E9F04229D2435EAad6e0011309ce81B"
+fast_updates_configuration_address = "0xee61C304E6b07a0a4BB36e956cFDBbD7D665173E"
+submission_address = "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
+mock_address = "0xd4e934C2749CA8C1618659D02E7B28B074bf4df7"
+flare_system_manager = "0xd4e934C2749CA8C1618659D02E7B28B074bf4df7"
+incentive_manager_address = "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
+submission_window = 10
+advance_blocks = 0
+max_weight = 512
+value_provider_base_url = "http://localhost:3101/feed-values/"
+
+[transactions]
+accounts = [
+    "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+    "0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
+    "0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131",
+]
+gas_limit = 8000000
+value = 0
+gas_price_multiplier = 1.2
+
+
+[logger]
+level = "INFO"
+file = "./logger/logs/fast_updates_client.log"
+console = true
+
+[chain]
+node_url = "http://127.0.0.1:8545/"
+chain_id = 1337

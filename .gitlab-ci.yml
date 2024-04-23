@@ -1,34 +1,69 @@
 workflow:
-    rules:
-        - if: '$CI_OPEN_MERGE_REQUESTS != null && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
-          when: never
-        - when: always
+  rules:
+    - if: '$CI_OPEN_MERGE_REQUESTS != null && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
+      when: never
+    - when: always
 
-.test:
-    stage: test
-    image: node:18
-    cache:
-        - key:
-              files:
-                  - yarn.lock
-          paths:
-              - node_modules/
-          policy: pull
-    before_script:
-        - yarn install --immutable
-        - yarn compile
+# lint-ts-simulation:
+#   image: node:18
+#   before_script:
+#     - cd ts-simulation
+#   script:
+#     - yarn install --immutable
+#     - yarn lint
 
-lint:
-    extends: .test
-    script:
-        - yarn lint
+# test-ts-simulation:
+#   extends: .lint-ts-simulation
+#   before_script:
+#     - cd ts-simulation
+#   script:
+#     - yarn install --immutable
+#     - yarn test
 
-test:
-    extends: .test
-    script:
-        - yarn test
+lint-py-visualizer:
+  image: python:3.12
+  before_script:
+    - curl -sSL https://install.python-poetry.org | python3 -
+    - export PATH="/root/.local/bin:$PATH"
+    - cd py-visualizer
+  script:
+    - poetry install --no-root
+    - poetry run ruff check --fix
 
-test-coverage:
-    extends: .test
-    script:
-        - yarn test-coverage
+lint-go-client:
+  image: golang:1.21.0
+  before_script:
+    - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2
+    - cd go-client
+  script:
+    - go vet ./...
+    - go fmt ./...
+    - go mod tidy
+    - go mod verify
+    - golangci-lint run
+
+test-go-client:
+  image: golang:1.21.0
+  before_script:
+    - cd go-client
+  script:
+    - go test -v provider/random_provider_test.go
+    - go test -v provider/feed_provider_test.go
+    - go test -v sortition/sortition_test.go
+
+test-go-client-docker:
+  image: docker
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - cd go-client/tests
+  script:
+    - docker compose up ganache --detach
+    - VALUE_PROVIDER_IMPL=random docker compose up value-provider --detach
+    - docker compose up test-client --exit-code-from test-client
+    - docker compose stop ganache
+    - docker compose stop value-provider
