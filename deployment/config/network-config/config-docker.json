@@ -1,5 +1,0 @@
-{
-    "rpcUrl": "ws://chain:8545/",
-    "gasLimit": "2500000",
-    "gasPriceMultiplier": 1.2
-}

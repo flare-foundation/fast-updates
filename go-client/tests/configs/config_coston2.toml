@@ -1,0 +1,30 @@
+[client]
+private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+fast_updater_address = "0x740e30661aE6d8eF368088A34b3f4AD302F63841"
+mock_address = "0x3b9a1E27c317DdD9c256dD5a49f7f2C67E603c06"
+flare_system_manager = "0x3b9a1E27c317DdD9c256dD5a49f7f2C67E603c06"
+submission_window = 8
+advance_blocks = 0
+max_weight = 512
+value_provider_base_url = "http://host.docker.internal:3101/"
+
+[transactions]
+accounts = [
+    "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+    "0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
+    "0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131",
+]
+gas_limit = 8000000
+value = 0
+gas_price_multiplier = 1.2
+
+
+[logger]
+level = "INFO"
+file = "./logger/logs/fast_updates_client.log"
+console = true
+
+[chain]
+chain_id = 114
+node_url = "https://coston2-api.flare.network/ext/C/rpc"

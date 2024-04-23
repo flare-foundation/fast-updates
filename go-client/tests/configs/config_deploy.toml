@@ -1,0 +1,18 @@
+[transactions]
+accounts = [
+    "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122",
+]
+gas_limit = 8000000
+value = 0
+gas_price_multiplier = 1.2
+
+
+[chain]
+node_url = "http://ganache:8545/"
+chain_id = 1337
+# node_url = "http://127.0.0.1:8545/"
+# chain_id = 1337
+# node_url = "https://coston2-api.flare.network/ext/C/rpc"
+# chain_id = 114
+# chain_id = 16
+# node_url = "https://coston-api.flare.network/ext/bc/C/rpc"

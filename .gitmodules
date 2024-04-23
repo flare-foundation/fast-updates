@@ -1,0 +1,4 @@
+[submodule "flare-smart-contracts-v2"]
+	path = flare-smart-contracts-v2
+	url = git@gitlab.com:flarenetwork/flare-smart-contracts-v2.git
+	branch = fast_updates
