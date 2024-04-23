@@ -77,6 +77,10 @@ func BuildConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = ReadEnv(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = url.ParseRequestURI(cfg.Client.ValueProviderUrl)
 	if err != nil {
