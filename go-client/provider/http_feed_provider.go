@@ -93,7 +93,7 @@ func (c *HttpValuesProvider) GetFeedValues(feeds []FeedId) ([]FeedValue, error) 
 	}
 
 	// TODO: Should we specify voting round id instead of 0?
-	body, err := c.post("feed-values/0", req)
+	body, err := c.post("/feed-values/0", req)
 	if err != nil {
 		return nil, err
 	}
