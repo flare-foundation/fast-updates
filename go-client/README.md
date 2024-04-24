@@ -1,11 +1,13 @@
 # FTSO Fast Updates Client
 
 This repository contains an implementation of a FTSO Fast Updates client that can be used to submit
-fast updates. The FTSO Fast Updates Client is implemented to connect to a RPC blockchain node
-and continuously generates verifiable random numbers based on its private key and current
-block number to determine if it can submit a price update. In this case it makes a transaction
-from one of the provided accounts calling the SubmitUpdates function on the FastUpdater
-contract. Multiple accounts can be provided for the submissions in the case of multiple simultaneous
+fast updates to the [FTSOv2 contracts](https://github.com/flare-foundation/flare-smart-contracts-v2).
+The FTSO Fast Updates Client is implemented to connect to a RPC blockchain node
+and continuously generate verifiable random numbers, based on a sortition private key and current
+block number, to determine if it can submit a price update. In the latter case, it makes a transaction
+from one of the provided accounts calling the SubmitUpdates function on the
+[FastUpdater contract](https://github.com/flare-foundation/flare-smart-contracts-v2/blob/main/contracts/fastUpdates/implementation/FastUpdater.sol).
+Multiple accounts can be provided for the submissions in the case of multiple simultaneous
 fast updates, to not miss the submission window.
 
 ## Prerequisites
@@ -14,10 +16,11 @@ The client is implemented in Go (tested with version 1.21).
 
 ## Configuration
 
-The configuration is read from a `toml` file. Config file can be specified using the command line parameter `--config`, e.g.,
-`./fast-updates-client --config config.toml`. The default config file name is `config.toml`.
+The configuration is read from a `toml` file and/or the environment variables. Config file can be specified using the
+command line parameter `--config`, e.g., `./fast-updates-client --config config.toml`. The default config file name is `config.toml`.
 Here is a list of example configuration parameters. Note that to participate as a fast updater, one must be registered at the
-FTSO Top Level VoterRegistry contract, where it registers its **voter private key** and **sortition private kay** (see
+FTSOv2 Top Level system (see [link](https://github.com/flare-foundation/ftso-v2-provider-deployment?tab=readme-ov-file#register-accounts)),
+where it registers its **sortition private kay** (see
 below on how to generate the sortition key).
 
 ```toml
@@ -62,8 +65,8 @@ file = "./logger/logs/fast_updates_client.log"
 console = true
 
 [chain]
-node_url = "http://127.0.0.1:8545/"
-chain_id = 1337
+node_url = "https://coston2-api.flare.network/ext/C/rpc"
+chain_id = 114
 ```
 
 It is advised that the private key, sortition private key, and accounts private keys
@@ -76,15 +79,16 @@ to implement its own updates logic. For this it needs to implement a struct with
 functionality that fits the following interface.
 
 ```go
-type UpdatesProvider interface {
-    GetUpdates() (*fast_updater.Deltas, string, error)
+type ValuesProvider interface {
+	GetValues(feeds []FeedId) ([]float64, error)
 }
 ```
 
-See `updates/updates_provide.go` for the interface and `updates/updates_random.go` for a simple
-implementation of a price provider generating random updates. When an implementation is provided,
-one can define in the `main.go` which price provider will be used. todo: should we change this to an
-api call?
+See `provider/feed_provider.go` for the interface. We provide an implementation of obtaining
+feeds values based on API calls to the [FTSOv2 Example value provider](https://github.com/flare-foundation/ftso-v2-example-value-provider),
+see `provider/http_feed_provider.go`. For testing one can use also `provider/random_provider.go` for a
+price provider generating random values. When an custom implementation is provided,
+one can define in `main.go` which price provider will be used.
 
 ## Running the FTSO Fast Updates Client
 
@@ -105,8 +109,9 @@ go build .
 ## Handling failed transactions
 
 The FTSO Fast Updates Client is implemented to submit fast updates to the
-specified FastUpdater contract. In file `client/transaction_queue.go` there
-is an implementation of a queue that accepts tasks (transaction requests
+specified FastUpdater contract through the Submission contract.
+In file `client/transaction_queue.go` there is an implementation of a queue
+that accepts tasks (transaction requests
 for fast updates) and executes them on parallel threads. In the case of
 a failed transaction, which can happen for multiple reasons such as failed
 connection to the RPC node, missed submission block, etc., an error handler
@@ -118,7 +123,7 @@ func (txQueue *TransactionQueue) ErrorHandler()
 
 function in the file `client/transaction_queue.go`. Currently, in the
 case of an error, the client only logs the error and dismisses the
-transaction. Alternative actions such as resubmitting the transaction
+transaction. Alternative actions, such as resubmitting the transaction
 can be implemented, but this can be risky since the submission window
 might already be closed.
 
@@ -135,7 +140,7 @@ go run keygen/keygen.go
 
 and the key should be printed in the console. Additionally, to register the public key at the
 top level FTSO voter registry, one needs to provide a proof of the correctness of the public
-key. For this a user needs to sign its address. Use
+key. For this a user needs to sign its _entity_ address. Use
 
 ```bash
 go run keygen/keygen.go --key 0x1512de600a10a0aac01580dbfc080965b89ed2329a7b2bf538f4c7e09e34aa1 --address 0xd4e934C2749CA8C1618659D02E7B28B074bf4df7
@@ -151,8 +156,8 @@ go run keygen/keygen.go --key_file keys.out --address 0xd4e934C2749CA8C1618659D0
 ```
 
 where the address value needs to be replaced by the actual address that will be used to sign
-the updates. The signature should
-be saved in the specified file.
+the updates. The signature should be saved in the specified file. Signing of the entity address
+is provided also in [this registration script](https://github.com/flare-foundation/flare-smart-contracts-v2/blob/main/deployment/tasks/register-public-keys.ts#L38).
 
 ## Tests
 
@@ -175,7 +180,9 @@ go test -v client/client_test.go
 Run
 
 ```bash
-go test -v deltas/deltas_random_test.go
+go test -v provider/feed_provider_test.go
+go test -v provider/http_feed_provider_test.go
+go test -v provider/random_provider_test.go
 go test -v sortition/sortition_test.go
 ```
 
@@ -183,7 +190,8 @@ for the unit tests.
 
 ### Simulation of the Fast Updates protocol using multiple clients on a local Hardhat node
 
-Using the submodule repository `flare-smart-contracts-v2` found [here](../flare-smart-contracts-v2/) one can deploy all the Fast Updates contracts
+Using the repository `flare-smart-contracts-v2` found [here](https://github.com/flare-foundation/flare-smart-contracts-v2/tree/main)
+one can deploy all the Fast Updates contracts
 together with the whole Flare system and voter repository. Navigate to the
 repository and run
 
@@ -206,9 +214,9 @@ The configuration files `tests/config1.toml`, `tests/config2.toml`,
 and `tests/config3.toml` should be set so that the clients can participate
 in the protocol.
 
-## Compiled ABI of Flare-Smart-Contracts-V2
+## Compiled ABI of Flare-Smart-Contracts-v2
 
-The Fast Updates Go client uses and interface to the contracts that was compiled using `solc` compiler and `abigen` tool. In the case
+The Fast Updates Go client uses an interface to the contracts that was compiled using `solc` compiler and `abigen` tool. In the case
 that the contracts are changed, the interface needs to be changed as well. Use the provided
 `Makefile` to compile the new interfaces with
 
