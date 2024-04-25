@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"fast-updates-client/logger"
 	"math"
 	"math/big"
 	"math/rand"
@@ -28,8 +27,6 @@ func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeed
 	}
 	scaleDiff, _ := new(big.Int).Sub(scale, new(big.Int).Exp(big.NewInt(2), big.NewInt(127), nil)).Float64()
 	scaleDiff = scaleDiff / math.Pow(2, 127)
-
-	logger.Info("chain feeds values: %v, provider feeds values: %v", chainValues, providerValues)
 
 	lastFeedIndex := valueIndexToFeedIndex[len(valueIndexToFeedIndex)-1]
 	deltasList := make([]byte, lastFeedIndex+1)
@@ -62,7 +59,6 @@ func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeed
 	}
 
 	deltasString := string(deltasList)
-	logger.Info("deltas: %s", deltasString)
 	deltas, err := StringToDeltas(deltasString)
 
 	return deltas, deltasString, err

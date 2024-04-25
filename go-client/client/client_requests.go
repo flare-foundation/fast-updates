@@ -189,6 +189,9 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 		return err
 	}
 
+	logger.Info("chain feeds values in block %d (before update): %v", client.transactionQueue.CurrentBlockNum, chainValues)
+	logger.Info("provider feeds values: %v", providerValues)
+
 	// calculate deltas for provider and on-chain prices
 	deltas, deltasString, err := provider.GetDeltas(chainValues, providerValues, supportedFeedIndexes, scale)
 	if err != nil {
@@ -237,6 +240,13 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 		return fmt.Errorf("transaction failed")
 	}
 	logger.Info("successful update for block %d replicate %d in block %d", updateProof.BlockNumber, updateProof.Replicate, receipt.BlockNumber.Int64())
+	
+		// get current prices from on-chain
+	chainValues, err = client.GetPrices(supportedFeedIndexes)
+	if err != nil {
+		return err
+	}
+	logger.Info("chain feeds values in block %d (after update): %v", receipt.BlockNumber.Int64(), chainValues)
 
 	return nil
 }
