@@ -13,7 +13,7 @@ incentive_manager_address = "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
 submission_window = 10
 advance_blocks = 0
 max_weight = 512
-value_provider_base_url = "http://localhost:3101/feed-values/"
+value_provider_base_url = "http://localhost:3101"
 
 [transactions]
 accounts = [
