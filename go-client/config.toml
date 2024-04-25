@@ -32,5 +32,5 @@ file = "./logger/logs/fast_updates_client.log"
 console = true
 
 [chain]
-node_url = "http://127.0.0.1:8545/"
+node_url = "http://127.0.0.1:8545"
 chain_id = 1337

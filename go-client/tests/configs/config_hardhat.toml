@@ -6,7 +6,7 @@ flare_system_manager = "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
 submission_window = 8
 advance_blocks = 0
 max_weight = 256
-value_provider_base_url = "http://host.docker.internal:3101/"
+value_provider_base_url = "http://host.docker.internal:3101"
 
 [transactions]
 accounts = [
@@ -25,5 +25,5 @@ file = "./logger/logs/fast_updates_client.log"
 console = true
 
 [chain]
-node_url = "http://127.0.0.1:8545/"
+node_url = "http://127.0.0.1:8545"
 chain_id = 31337

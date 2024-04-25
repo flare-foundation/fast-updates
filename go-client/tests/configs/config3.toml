@@ -9,7 +9,7 @@ incentive_manager_address = "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
 submission_window = 8
 advance_blocks = 0
 max_weight = 256
-value_provider_base_url = "http://host.docker.internal:3101/"
+value_provider_base_url = "http://host.docker.internal:3101"
 
 [transactions]
 accounts = [
@@ -27,9 +27,9 @@ file = "./logger/logs/fast_updates_client3.log"
 console = true
 
 [chain]
-# node_url = "http://ganache:8545/"
+# node_url = "http://ganache:8545"
 # chain_id = 1337
-node_url = "http://host.docker.internal:8545/"
+node_url = "http://host.docker.internal:8545"
 chain_id = 31337
 # node_url = "https://coston2-api.flare.network/ext/C/rpc"
 # chain_id = 114

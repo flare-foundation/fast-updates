@@ -20,8 +20,8 @@ func TestClient(t *testing.T) {
 	chainAddress := ""
 	valueProviderBaseUrl := ""
 	if chainNode == "docker_ganache" {
-		chainAddress = "http://ganache:8545/"
-		valueProviderBaseUrl = "http://value-provider:3101/"
+		chainAddress = "http://ganache:8545"
+		valueProviderBaseUrl = "http://value-provider:3101"
 	} else {
 		// running a ganache node
 		logger.Info("starting a ganache chain node")
@@ -31,11 +31,11 @@ func TestClient(t *testing.T) {
 		// cmd.Stdout = os.Stdout
 		// cmd.Stderr = os.Stderr
 		go cmd.Run() //nolint:errcheck
-		chainAddress = "http://127.0.0.1:8545/"
+		chainAddress = "http://127.0.0.1:8545"
 
 		// runs an external provider that returns fixed values for testing
 		runValueProvider()
-		valueProviderBaseUrl = "http://localhost:3101/"
+		valueProviderBaseUrl = "http://localhost:3101"
 	}
 
 	// set chain parameters

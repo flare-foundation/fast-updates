@@ -8,9 +8,9 @@ gas_price_multiplier = 1.2
 
 
 [chain]
-node_url = "http://ganache:8545/"
+node_url = "http://ganache:8545"
 chain_id = 1337
-# node_url = "http://127.0.0.1:8545/"
+# node_url = "http://127.0.0.1:8545"
 # chain_id = 1337
 # node_url = "https://coston2-api.flare.network/ext/C/rpc"
 # chain_id = 114
