@@ -30,9 +30,9 @@ func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeed
 
 	lastFeedIndex := valueIndexToFeedIndex[len(valueIndexToFeedIndex)-1]
 	deltasList := make([]byte, lastFeedIndex+1)
-	// for index := range deltasList {
-	// 	deltasList[index] = '0'
-	// }
+	for index := range deltasList {
+		deltasList[index] = '0'
+	}
 
 	for i := 0; i < len(chainValues); i++ {
 		delta := byte('0')
