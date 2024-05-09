@@ -63,10 +63,9 @@ services:
 
   value-provider:
     container_name: value-provider
-    image: ghcr.io/flare-foundation/ftso-scaling:latest
+    image: ghcr.io/flare-foundation/ftso-v2-example-value-provider:latest
     ports:
       - 3101:3101
     environment:
       - VALUE_PROVIDER_IMPL=${VALUE_PROVIDER_IMPL}
       - VALUE_PROVIDER_CLIENT_PORT=3101
-    command: /bin/bash -c 'node dist/apps/example_provider/apps/example_provider/src/main.js'

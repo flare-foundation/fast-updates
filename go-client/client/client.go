@@ -54,7 +54,7 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 	fastUpdatesClient.valuesProvider = valuesProvider
 
 	var err error
-	fastUpdatesClient.chainClient, err = ethclient.Dial(cfg.Chain.NodeURL)
+	fastUpdatesClient.chainClient, err = cfg.Chain.DialETH()
 	if err != nil {
 		return nil, fmt.Errorf("CreateFastUpdatesClient: Dial: %w", err)
 	}

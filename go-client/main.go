@@ -6,6 +6,8 @@ import (
 	"fast-updates-client/logger"
 	"fast-updates-client/provider"
 	"flag"
+	"fmt"
+	"os"
 	"time"
 )
 
@@ -13,8 +15,8 @@ func main() {
 	flag.Parse()
 	cfg, err := config.BuildConfig()
 	if err != nil {
-		logger.Fatal("Config error: %s", err)
-		return
+		fmt.Printf("Config error: %v\n", err)
+		os.Exit(1)
 	}
 	config.GlobalConfigCallback.Call(cfg)
 
