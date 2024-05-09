@@ -66,6 +66,8 @@ console = true
 
 [chain]
 node_url = "https://coston2-api.flare.network/ext/C/rpc"
+# optional rpc api key, can also be set via API_KEY env variable
+api_key = ""
 chain_id = 114
 ```
 

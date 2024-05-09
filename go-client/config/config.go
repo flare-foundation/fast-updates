@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 )
@@ -40,6 +41,7 @@ type LoggerConfig struct {
 type ChainConfig struct {
 	NodeURL string `toml:"node_url"`
 	ChainId int    `toml:"chain_id"`
+	ApiKey  string `toml:"api_key" envconfig:"API_KEY"`
 }
 
 type FastUpdateClientConfig struct {
@@ -82,9 +84,9 @@ func BuildConfig() (*Config, error) {
 		return nil, err
 	}
 
-	_, err = url.ParseRequestURI(cfg.Client.ValueProviderUrl)
+	err = validateConfig(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid URL specified for ValueProviderUrl: %w")
+		return nil, errors.Wrap(err, "config validation failed")
 	}
 
 	return cfg, nil
@@ -114,4 +116,46 @@ func ReadEnv(cfg *Config) error {
 
 func (c Config) LoggerConfig() LoggerConfig {
 	return c.Logger
+}
+
+func validateConfig(cfg *Config) error {
+	_, err := url.ParseRequestURI(cfg.Client.ValueProviderUrl)
+	if err != nil {
+		return errors.Wrap(err, "invalid URL specified for ValueProviderUrl: %w")
+	}
+
+	if len(cfg.Transactions.Accounts) == 0 {
+		return errors.New("no submission accounts provided")
+	}
+
+	return nil
+}
+
+// Dial the chain node and return an ethclient.Client.
+func (chain *ChainConfig) DialETH() (*ethclient.Client, error) {
+	rpcURL, err := chain.getRPCURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return ethclient.Dial(rpcURL)
+}
+
+// Get the full RPC URL which may be passed to ethclient.Dial. Includes API key
+// as query param if it is configured.
+func (chain *ChainConfig) getRPCURL() (string, error) {
+	u, err := url.Parse(chain.NodeURL)
+	if err != nil {
+		return "", err
+	}
+
+	if chain.ApiKey == "" {
+		return u.String(), nil
+	}
+
+	q := u.Query()
+	q.Set("x-apikey", chain.ApiKey)
+	u.RawQuery = q.Encode()
+
+	return u.String(), nil
 }
