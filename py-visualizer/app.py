@@ -31,6 +31,8 @@ PORT = args.port
 
 if args.logpath:
     handler = LogfileIOHandler(args.logpath)
+    feed_names = handler.get_feed_names()
+    feed_nums = len(handler.get_price_feeds().columns) // 2
 
 
 @callback(
@@ -43,11 +45,12 @@ if args.logpath:
     [
         Input("interval-component", "n_intervals"),
         Input("range-dropdown", "value"),
+        Input("feed-dropdown", "value"),
         Input("sd-slider", "value"),
     ],
 )
 def update(
-    _, range_dropdown: str, sd_slider: float
+    _, range_dropdown: str, feed_dropdown: int, sd_slider: float
 ) -> tuple[list[dict[Hashable, Any]], go.Figure, go.Figure, go.Figure]:
     """
     Update the visualizer with new data based on the selected range and
@@ -64,6 +67,13 @@ def update(
     """
     # Create table and graph
     df = handler.get_price_feeds()
+    if feed_dropdown == []:
+        feed_dropdown = list(feed_names.values())[:feed_nums]
+    feed_dropdown = [int(name.split(" ")[0]) for name in feed_dropdown]
+    columns = [f"FastUpdateFeed_{i}" for i in feed_dropdown] + [
+        f"ActualFeed_{i}" for i in feed_dropdown
+    ]
+    df = df[columns]
     num_feeds = len(df.columns) // 2
 
     # Only show the last 50 blocks
@@ -77,34 +87,42 @@ def update(
         num_rows, num_cols = (num_feeds + 1) // 2, 2
 
     # Create DataTable
+    df = df.reindex(sorted(df.columns, key=lambda x: int(x.split("_")[1])), axis=1)
     table = df.iloc[::-1].reset_index().to_dict("records")
 
     # Create Graph for Price Feeds
     feeds_fig = make_subplots(
         rows=num_rows,
         cols=num_cols,
-        subplot_titles=[f"Feed {i}" for i in range(num_feeds)],
+        subplot_titles=[f"Feed {feed_names[i]}" for i in range(num_feeds)],
     )
-    for idx in range(num_feeds):
+    for ind, idx in enumerate(feed_dropdown):
+        # For row and column indexing
+
+        feeds_fig.layout.annotations[ind].update(text=f"Feed {feed_names[idx]}")
+
         feeds_fig.add_trace(
             {
                 "x": df.index,
                 "y": df[f"FastUpdateFeed_{idx}"],
-                "name": f"Fast Update (Feed {idx})",
+                "name": f"Fast Update (Feed {feed_names[idx]})",
                 "line": {"color": f"{px.colors.qualitative.Plotly[0]}"},
             },
-            row=(idx // 2) + 1,
-            col=(idx % 2) + 1,
+            row=(ind // 2) + 1,
+            col=(ind % 2) + 1,
         )
+        # drop actual feed NaNs:
+        # come from "after update" lines, ruin the graph
+        df = df.dropna()
         feeds_fig.add_trace(
             {
                 "x": df.index,
                 "y": df[f"ActualFeed_{idx}"],
-                "name": f"Actual (Feed {idx})",
+                "name": f"Actual (Feed {feed_names[idx]})",
                 "line": {"color": f"{px.colors.qualitative.Plotly[1]}"},
             },
-            row=(idx // 2) + 1,
-            col=(idx % 2) + 1,
+            row=(ind // 2) + 1,
+            col=(ind % 2) + 1,
         )
 
         # Add standard dev bands
@@ -121,8 +139,8 @@ def update(
                 line={"width": 0},
                 showlegend=False,
             ),
-            row=(idx // 2) + 1,
-            col=(idx % 2) + 1,
+            row=(ind // 2) + 1,
+            col=(ind % 2) + 1,
         )
         feeds_fig.add_trace(
             go.Scatter(
@@ -136,8 +154,8 @@ def update(
                 fill="tonexty",
                 showlegend=False,
             ),
-            row=(idx // 2) + 1,
-            col=(idx % 2) + 1,
+            row=(ind // 2) + 1,
+            col=(ind % 2) + 1,
         )
     feeds_fig.update_layout(
         xaxis_title="Block Number",
@@ -145,22 +163,27 @@ def update(
         hovermode="x",
     )
 
+    feeds_fig.update_xaxes(tickformat="d")
+
     # Create Graph for Price Deviation
     deviation_fig = make_subplots(
         rows=1,
         cols=1,
     )
-    for idx in range(num_feeds):
+    for idx in feed_dropdown:
         y = (
             (df[f"FastUpdateFeed_{idx}"] - df[f"ActualFeed_{idx}"]).abs()
             / df[f"ActualFeed_{idx}"]
             * 1e4
         )
+        name = (
+            f"Feed {feed_names[idx]} (med={y.median():.1f} bps,avg={y.mean():.1f} bps)"
+        )
         deviation_fig.add_trace(
             {
                 "x": df.index,
                 "y": y,
-                "name": f"Feed {idx} (med={y.median():.1f} bps,avg={y.mean():.1f} bps)",
+                "name": name,
             },
             row=1,
             col=1,
@@ -172,28 +195,33 @@ def update(
         showlegend=True,
     )
 
-    # Create Graph for Provider Status
-    status_dict = handler.get_providers_status()
-    status_fig = make_subplots(rows=1, cols=1)
-    for provider_id, status in status_dict.items():
-        pct_failures = sum(status.values()) / len(status) if len(status) != 0 else 0
+    deviation_fig.update_xaxes(tickformat="d")
 
-        status_fig.add_trace(
-            {
-                "name": f"Provider {provider_id} ({pct_failures:.0%} failures)",
-                "x": list(status.keys()),
-                "y": list(status.values()),
-                "mode": "markers",
-            },
-            row=1,
-            col=1,
-        )
+    # Create Graph for Provider Status
+    status = handler.get_provider_status()
+    status_fig = make_subplots(rows=1, cols=1)
+    pct_failures = sum(status.values()) / len(status) if len(status) != 0 else 0
+
+    status_fig.add_trace(
+        {
+            "name": f"Provider ({pct_failures:.0%} failures)",
+            "x": list(status.keys()),
+            "y": list(status.values()),
+            "mode": "markers",
+        },
+        row=1,
+        col=1,
+    )
     status_fig.update_layout(
         xaxis_title="Block Number",
         yaxis_title="Failures",
         showlegend=True,
         hovermode="x",
     )
+
+    # "linear" sorts x-axis by block number, "category" sorts by provider
+    # Remove or change to "categorical" if you want each provider separate
+    status_fig.update_xaxes(type="linear", tickformat="d")
     return table, feeds_fig, deviation_fig, status_fig
 
 
@@ -212,6 +240,17 @@ app.layout = dbc.Container(
                         dbc.Label("Range"),
                         dcc.Dropdown(
                             id="range-dropdown", options=["New", "All"], value="All"
+                        ),
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        dbc.Label("Feed"),
+                        dcc.Dropdown(
+                            id="feed-dropdown",
+                            options=list(feed_names.values())[:feed_nums],
+                            value=[feed_names[0], feed_names[2]],
+                            multi=True,
                         ),
                     ]
                 ),

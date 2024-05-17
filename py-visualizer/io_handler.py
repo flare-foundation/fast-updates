@@ -7,7 +7,7 @@ import pandas as pd
 
 class IOHandler(ABC):
     @abstractmethod
-    def get_providers_status(self) -> dict[int, dict[int, bool]]:
+    def get_provider_status(self) -> dict[int, bool]:
         """
         Returns a dictionary containing the status of providers and their associated
         block numbers. The status is represented as a boolean value, where True
@@ -29,140 +29,116 @@ class LogfileIOHandler(IOHandler):
         super().__init__()
         self.logpath = logpath
 
-    def get_log_paths(self) -> tuple[Path, dict[int, Path]]:
+    def get_log_path(self) -> Path:
         """
-        Get the paths of log files for admin daemon and fast update providers.
-
-        Args:
-            filepath (Path): The directory path where the log files are located.
+        Get the path of Go client log file.
 
         Returns:
-            tuple[Path, dict[int, Path]]: A tuple containing the path of the admin
-            daemon log file and a dictionary mapping provider IDs to their
-            corresponding log files.
+            Path: The path of the Go client log file.
         Raises:
-            FileNotFoundError: If no fast-update-provider logs or admin-daemon logs
-                are found.
+            FileNotFoundError: If no fast_updates_client logs are found.
         """
-        admin_daemon_log: Path = Path()
-        fast_update_provider_logs: dict[int, Path] = {}
-
         for file in self.logpath.iterdir():
-            if "fast-update-provider" in file.stem:
-                provider_id = int(re.findall(r"\d+", file.stem)[0])
-                fast_update_provider_logs[provider_id] = file
-            if "admin-daemon" in file.stem:
-                admin_daemon_log = file
+            if "fast_updates_client" in file.stem:
+                log_path = file
+                break
 
-        if len(fast_update_provider_logs) == 0:
-            raise FileNotFoundError("No fast-update-provider logs found")
-        if not admin_daemon_log:
-            raise FileNotFoundError("No admin-daemon logs found")
+        if not log_path:
+            raise FileNotFoundError("No fast_updates_client logs found")
 
-        return admin_daemon_log, fast_update_provider_logs
+        return log_path
 
-    def get_providers_status(self) -> dict[int, dict[int, bool]]:
+    def get_provider_status(self) -> dict[int, bool]:
         """
-        Retrieve the status of providers based on the contents of the files
-        specified by the filepaths.
-
-        Args:
-            filepath (Dict[int, Path]): A dictionary mapping provider IDs to file paths.
+        Retrieve the status of provider based on the contents of the file
+        specified by the filepath.
 
         Returns:
-            Dict[int, Dict[int, bool]]: A dictionary containing the status of providers
-            and their associated block numbers.The status is represented as a boolean
+            Dict[int, bool]: A dictionary containing the status of the provider
+            and their associated block numbers. The status is represented as a boolean
             value, where True indicates a failure and False indicates success.
         """
-        _, filepath = self.get_log_paths()
+        provider_path = self.get_log_path()
 
         status = {}
 
-        for provider_id, provider_path in filepath.items():
-            status[provider_id] = {}
-            with open(provider_path) as file:
-                for line in file.readlines():
-                    if "Block" not in line:
-                        continue
-                    nums = re.findall(r"\d+", line)
-                    block_number = int(nums[8])
-                    if "failed" in line or "Failed" in line or "Error" in line:
-                        status[provider_id][block_number] = True
-                    else:
-                        status[provider_id][block_number] = False
+        with open(provider_path) as file:
+            block_number = None
+            for line in file.readlines():
+                if "scheduling update" in line:
+                    block_number = re.findall(r"\d+", line)[7]
+                    status[block_number] = True
+                if "successful update for block" in line:
+                    block_number = re.findall(r"\d+", line)[7]
+                    status[block_number] = False
         return status
-
-    def get_providers_price_comparison(
-        self,
-        filepaths: dict[int, Path],
-    ) -> dict[int, pd.DataFrame]:
-        """
-        Retrieves price comparison data for different providers.
-
-        Args:
-            filepaths (dict[int, Path]): A dictionary mapping provider IDs to
-                file paths.
-
-        Returns:
-            dict[int, pd.DataFrame]: A dictionary mapping provider IDs to pandas
-                DataFrames containing price comparison data.
-        """
-        dfs = {}
-        for provider_id, filepath in filepaths.items():
-            block_numbers, feeds = [], []
-            with open(filepath) as file:
-                for line in file.readlines():
-                    if "chainPrices" not in line:
-                        continue
-                    nums = re.findall(r"\d+", line)
-                    block_numbers.append(int(nums[8]))
-                    feeds.append([int(nums[9]), int(nums[10])])
-
-            df = pd.DataFrame(feeds, columns=["fast_update_price", "actual_price"])
-            df["block_number"] = block_numbers
-            df.set_index("block_number", drop=True, inplace=True)
-            dfs[provider_id] = df
-        return dfs
 
     def get_price_feeds(self) -> pd.DataFrame:
         """
         Parses a logfile and extracts price feeds data.
 
-        Args:
-            filepath (Path): The path to the logfile.
-            skip_lines (int, optional): The number of lines to skip at
-                the beginning of the file. Defaults to 0.
-
         Returns:
             pd.DataFrame: A DataFrame containing the parsed price feeds data.
         """
-        filepath, _ = self.get_log_paths()
+        filepath = self.get_log_path()
 
         block_numbers, fast_update_feeds, actual_feeds = [], [], []
         with open(filepath) as file:
             for line in file.readlines():
-                if "Block" not in line:
-                    continue
-                nums = re.findall(r"(?:\d+\.)?\d+", line)
-                num_feeds = int(nums[6])
-                block_numbers.append(int(nums[7]))
-                fast_update_feeds.append(
-                    [float(num) for num in nums[8 : 8 + num_feeds]]
-                )
-                actual_feeds.append(
-                    [float(num) for num in nums[8 + num_feeds : 8 + 8 + num_feeds]]
-                )
+                # new block number + fast update feeds
+                if "chain feeds" in line and "after update" not in line:
+                    nums = re.findall(r"(?:\d+\.)?\d*(?:e?-?\d+)", line)
+                    block_numbers.append(int(nums[5]))
+                    fast_update_feeds.append([float(num) for num in nums[6:]])
+
+                # get actual feeds for new block
+                elif "provider feeds values" in line:
+                    nums = re.findall(r"(?:\d+\.)?\d*(?:e?-?\d+)", line)
+                    num_feeds = len(fast_update_feeds[0])
+                    actual_feeds.append([float(num) for num in nums[5 : num_feeds + 5]])
+
+                # write down chain values after update
+                elif "after update" in line:
+                    nums = re.findall(r"(?:\d+\.)?\d*(?:e?-?\d+)", line)
+                    block_numbers.append(int(nums[5]))
+                    fast_update_feeds.append([float(num) for num in nums[6:]])
+                    actual_feeds.append([None for _ in nums[6:]])
 
         # Convert to DataFrame
         df = pd.DataFrame(fast_update_feeds)
         df["block_number"] = block_numbers
         df.set_index("block_number", drop=True, inplace=True)
         df = df.add_prefix("FastUpdateFeed_")
+        # Sort by block number
+        df.sort_index(inplace=True)
 
         df2 = pd.DataFrame(actual_feeds)
         df2["block_number"] = block_numbers
         df2.set_index("block_number", drop=True, inplace=True)
         df2 = df2.add_prefix("ActualFeed_")
+        # Sort by block number
+        df2.sort_index(inplace=True)
 
         df = pd.concat([df, df2], axis=1)
         return df
+
+    def get_feed_names(self) -> dict[int, str]:
+        """
+        Get the names of the feeds from the log files.
+
+        Returns:
+            dict[int, str]: A dictionary mapping feed indices to their names.
+        """
+        filepath = self.get_log_path()
+
+        feed_names = {}
+        with open(filepath) as file:
+            for line in file.readlines():
+                if "Fetched feed ids" in line:
+                    # the regex pattern is AAA(A)/AAA(A)
+                    feed_names = re.findall(r"[A-Z]{3,4}\/[A-Z]{3,4}", line)
+                    feed_names = {
+                        idx: f"{idx} - " + name for idx, name in enumerate(feed_names)
+                    }
+                    break
+        return feed_names

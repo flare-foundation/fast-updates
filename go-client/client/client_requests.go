@@ -159,13 +159,11 @@ func (client *FastUpdatesClient) SubmitUpdates(updateProof *sortition.UpdateProo
 	client.transactionQueue.InputChan <- compReq
 }
 
-func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProof, txOpts *bind.TransactOpts) error {
-	// get feed values from providers and calculate deltas relative to on-chain values
-
+func (client *FastUpdatesClient) getOnlineOfflineValues() ([]int, []float64, []float64,  error) {
 	// 0 value indicates unsupported feed. TODO: need to differentiate between 0 and absent value better.
 	providerRawValues, err := client.valuesProvider.GetValues(client.allFeeds)
 	if err != nil {
-		return errors.Wrap(err, "error getting feed values")
+		return nil, nil, nil, errors.Wrap(err, "error getting feed values")
 	}
 
 	supportedFeedIndexes := []int{}
@@ -180,17 +178,27 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 	// get current prices from on-chain
 	chainValues, err := client.GetPrices(supportedFeedIndexes)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
-	// get current scale
-	scale, err := client.GetScale()
+	return supportedFeedIndexes, chainValues, providerValues, nil
+}
+
+func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProof, txOpts *bind.TransactOpts) error {
+	// get feed values from providers and calculate deltas relative to on-chain values
+	supportedFeedIndexes, chainValues, providerValues, err := client.getOnlineOfflineValues()
 	if err != nil {
 		return err
 	}
 
 	logger.Info("chain feeds values in block %d (before update): %v", client.transactionQueue.CurrentBlockNum, chainValues)
 	logger.Info("provider feeds values: %v", providerValues)
+
+	// get current scale
+	scale, err := client.GetScale()
+	if err != nil {
+		return err
+	}
 
 	// calculate deltas for provider and on-chain prices
 	deltas, deltasString, err := provider.GetDeltas(chainValues, providerValues, supportedFeedIndexes, scale)
@@ -240,8 +248,8 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 		return fmt.Errorf("transaction failed")
 	}
 	logger.Info("successful update for block %d replicate %d in block %d", updateProof.BlockNumber, updateProof.Replicate, receipt.BlockNumber.Int64())
-	
-		// get current prices from on-chain
+
+	// get current prices from on-chain
 	chainValues, err = client.GetPrices(supportedFeedIndexes)
 	if err != nil {
 		return err
