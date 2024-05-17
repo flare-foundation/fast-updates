@@ -37,6 +37,7 @@ type FastUpdatesClient struct {
 	registeredEpochs    map[int64]bool
 	transactionQueue    *TransactionQueue
 	allFeeds            []provider.FeedId
+	loggingParams       config.LoggerConfig
 }
 
 type Account struct {
@@ -51,6 +52,7 @@ const (
 func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesProvider) (*FastUpdatesClient, error) {
 	fastUpdatesClient := FastUpdatesClient{}
 	fastUpdatesClient.params = cfg.Client
+	fastUpdatesClient.loggingParams = cfg.Logger
 	fastUpdatesClient.valuesProvider = valuesProvider
 
 	var err error
@@ -248,6 +250,16 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 		for _, updateProof := range updateProofs {
 			logger.Info("scheduling update for block %d replicate %d", updateProof.BlockNumber, updateProof.Replicate)
 			client.SubmitUpdates(updateProof)
+		}
+
+		if client.loggingParams.FeedValuesLog != 0 && blockNum%uint64(client.loggingParams.FeedValuesLog) == 0 {
+			_, chainValues, providerValues, err := client.getOnlineOfflineValues()
+			if err != nil {
+				logger.Error("failed obtaining feed values %s", err)
+			} else {
+				logger.Info("chain feeds values in block %d: %v", blockNum, chainValues)
+				logger.Info("provider feeds values: %v", providerValues)
+			}
 		}
 
 		// do not calculate in advance more than specified

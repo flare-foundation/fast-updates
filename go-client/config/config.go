@@ -32,10 +32,11 @@ type Config struct {
 }
 
 type LoggerConfig struct {
-	Level       string `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
-	File        string `toml:"file"`
-	MaxFileSize int    `toml:"max_file_size"` // In megabytes
-	Console     bool   `toml:"console"`
+	Level         string `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
+	File          string `toml:"file"`
+	MaxFileSize   int    `toml:"max_file_size"` // In megabytes
+	Console       bool   `toml:"console"`
+	FeedValuesLog int    `toml:"feed_values_log"`
 }
 
 type ChainConfig struct {
