@@ -2,7 +2,7 @@
 # Use --config parameter to specify the path to the configuration file.
 
 [client]
-private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 fast_updater_address = "0x8280D40C9E9F04229D2435EAad6e0011309ce81B"
 fast_updates_configuration_address = "0xee61C304E6b07a0a4BB36e956cFDBbD7D665173E"

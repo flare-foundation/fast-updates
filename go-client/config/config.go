@@ -52,7 +52,7 @@ type FastUpdateClientConfig struct {
 	IncentiveManagerAddress         string `toml:"incentive_manager_address"`
 	FlareSystemManagerAddress       string `toml:"flare_system_manager"`
 	MockAddress                     string `toml:"mock_address"`
-	PrivateKey                      string `toml:"private_key" envconfig:"PRIVATE_KEY"`
+	SigningPrivateKey               string `toml:"signing_private_key" envconfig:"PRIVATE_KEY"`
 	SortitionPrivateKey             string `toml:"sortition_private_key" envconfig:"SORTITION_PRIVATE_KEY"`
 	AdvanceBlocks                   int    `toml:"advance_blocks"`
 	SubmissionWindow                int    `toml:"submission_window"`

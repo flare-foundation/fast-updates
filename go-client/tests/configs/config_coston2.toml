@@ -1,5 +1,5 @@
 [client]
-private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 fast_updater_address = "0x740e30661aE6d8eF368088A34b3f4AD302F63841"
 mock_address = "0x3b9a1E27c317DdD9c256dD5a49f7f2C67E603c06"
