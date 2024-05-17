@@ -25,9 +25,9 @@ below on how to generate the sortition key).
 
 ```toml
 [client]
-# voters private key registered in the VoterRegistry,
+# private key corresponding to voter's "signingPolicyAddress"
 # can also be set up with environment variable PRIVATE_KEY
-private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 # voters sortition key registered in the VoterRegistry contract that enables to generate verifiable
 # randomness to determine the order of clients submitting the fast updates
 # can also be set up with environment variable SORTITION_PRIVATE_KEY

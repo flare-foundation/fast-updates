@@ -62,7 +62,7 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 	}
 
 	fastUpdatesClient.signingAccount = &Account{}
-	privateKey := cfg.Client.PrivateKey
+	privateKey := cfg.Client.SigningPrivateKey
 	if privateKey[:2] == "0x" {
 		privateKey = privateKey[2:]
 	}

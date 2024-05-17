@@ -55,7 +55,7 @@ func TestClient(t *testing.T) {
 
 	// set configuration parameters
 	cfgClient := config.FastUpdateClientConfig{
-		PrivateKey:          "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+		SigningPrivateKey:   "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
 		SortitionPrivateKey: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
 		SubmissionWindow:    5,
 		MaxWeight:           1024,
