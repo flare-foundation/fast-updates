@@ -36,6 +36,15 @@ func (client *FastUpdatesClient) GetCurrentScoreCutoff() (*big.Int, error) {
 	return score, err
 }
 
+func (client *FastUpdatesClient) GetBlockScoreCutoff(blockNum *big.Int) (*big.Int, error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
+	ops := &bind.CallOpts{Context: ctx}
+	score, err := client.fastUpdater.BlockScoreCutoff(ops, blockNum)
+	cancelFunc()
+
+	return score, err
+}
+
 func (client *FastUpdatesClient) GetSeed(rewardEpochId int64) (*big.Int, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
 	ops := &bind.CallOpts{Context: ctx}
@@ -52,6 +61,15 @@ func (client *FastUpdatesClient) GetScale() (*big.Int, error) {
 	cancelFunc()
 
 	return scale, err
+}
+
+func (client *FastUpdatesClient) GetExpectedSampleSize() (*big.Int, error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
+	ops := &bind.CallOpts{Context: ctx}
+	sampleSize, err := client.IncentiveManager.GetExpectedSampleSize(ops)
+	cancelFunc()
+
+	return sampleSize, err
 }
 
 func (client *FastUpdatesClient) GetCurrentRewardEpochId() (int64, error) {
@@ -78,7 +96,7 @@ func (client *FastUpdatesClient) GetMyWeight() (uint64, error) {
 	return weight.Uint64(), nil
 }
 
-func (client *FastUpdatesClient) GetPrices(feedIndexes []int) ([]float64, error) {
+func (client *FastUpdatesClient) GetFeeds(feedIndexes []int) ([]float64, uint64, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
 	ops := &bind.CallOpts{Context: ctx}
 
@@ -91,7 +109,7 @@ func (client *FastUpdatesClient) GetPrices(feedIndexes []int) ([]float64, error)
 	cancelFunc()
 
 	floatValues := RawChainValuesToFloats(feedValues)
-	return floatValues, err
+	return floatValues, feedValues.Timestamp, err
 }
 
 func (client *FastUpdatesClient) GetCurrentFeedIds() ([]provider.FeedId, error) {
@@ -117,6 +135,21 @@ func (client *FastUpdatesClient) GetCurrentFeedIds() ([]provider.FeedId, error) 
 func (client *FastUpdatesClient) Register(epoch int64) {
 	compReq := ComputationRequest{Function: func(txOpts *bind.TransactOpts) error { return client.register(epoch, txOpts) }}
 	client.transactionQueue.InputChan <- compReq
+}
+
+func (client *FastUpdatesClient) GetBalances() ([]*big.Int, error) {
+	balances := make([]*big.Int, len(client.transactionAccounts))
+	for i, account := range client.transactionAccounts {
+		balance, err := client.chainClient.BalanceAt(context.Background(),
+			account.Address, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		balances[i] = balance
+	}
+
+	return balances, nil
 }
 
 // only on mocked
@@ -176,7 +209,7 @@ func (client *FastUpdatesClient) getOnlineOfflineValues() ([]int, []float64, []f
 	}
 
 	// get current prices from on-chain
-	chainValues, err := client.GetPrices(supportedFeedIndexes)
+	chainValues, _, err := client.GetFeeds(supportedFeedIndexes)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -191,6 +224,12 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 		return err
 	}
 
+	// get current expectedSampleSize
+	sampleSize, err := client.GetExpectedSampleSize()
+	if err != nil {
+		return err
+	}
+
 	logger.Info("chain feeds values in block %d (before update): %v", client.transactionQueue.CurrentBlockNum, chainValues)
 	logger.Info("provider feeds values: %v", providerValues)
 
@@ -201,7 +240,7 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 	}
 
 	// calculate deltas for provider and on-chain prices
-	deltas, deltasString, err := provider.GetDeltas(chainValues, providerValues, supportedFeedIndexes, scale)
+	deltas, deltasString, err := provider.GetDeltas(chainValues, providerValues, supportedFeedIndexes, scale, sampleSize)
 	if err != nil {
 		return err
 	}
@@ -248,9 +287,10 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 		return fmt.Errorf("transaction failed")
 	}
 	logger.Info("successful update for block %d replicate %d in block %d", updateProof.BlockNumber, updateProof.Replicate, receipt.BlockNumber.Int64())
+	client.Stats.NumSuccessfulUpdates++
 
 	// get current prices from on-chain
-	chainValues, err = client.GetPrices(supportedFeedIndexes)
+	chainValues, _, err = client.GetFeeds(supportedFeedIndexes)
 	if err != nil {
 		return err
 	}

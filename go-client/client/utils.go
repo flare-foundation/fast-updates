@@ -26,3 +26,14 @@ func RawChainValuesToFloats(rawChainValues provider.ValuesDecimals) []float64 {
 	}
 	return floatValues
 }
+
+func CheckBalances(balances []*big.Int, minBalance float64) bool {
+	for _, balance := range balances {
+		balanceFloat, _ := balance.Float64()
+		if balanceFloat < minBalance {
+			return false
+		}
+	}
+
+	return true
+}

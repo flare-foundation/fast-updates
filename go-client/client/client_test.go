@@ -7,6 +7,7 @@ import (
 	"fast-updates-client/logger"
 	"fast-updates-client/provider"
 	"fast-updates-client/tests/test_utils"
+	"math"
 	"os"
 	"os/exec"
 	"testing"
@@ -23,18 +24,16 @@ func TestClient(t *testing.T) {
 		chainAddress = "http://ganache:8545"
 		valueProviderBaseUrl = "http://value-provider:3101"
 	} else {
-		// running a ganache node
-		logger.Info("starting a ganache chain node")
-		// cmd := exec.Command("bash", "-c", "docker run --publish 8544:8545 trufflesuite/ganache:latest --chain.hardfork=\"london\" --miner.blockTime=5 --wallet.accounts \"0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122, 10000000000000000000000\" \"0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb, 10000000000000000000000\" \"0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569, 10000000000000000000000\" \"0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131, 10000000000000000000000\"")
-		cmd := exec.Command("bash", "-c", "docker compose up ganache")
+		// running a ganache node and an external provider that returns fixed values for testing
+		logger.Info("starting a ganache chain node and data provider")
+		// Can set VALUE_PROVIDER_IMPL to "fixed" or "random" to return 0.01 or random values for all feeds.
+		cmd := exec.Command("bash", "-c", "docker compose up ganache  --detach && VALUE_PROVIDER_IMPL=random docker compose up value-provider --detach")
 		cmd.Dir = "../tests"
-		// cmd.Stdout = os.Stdout
-		// cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		go cmd.Run() //nolint:errcheck
-		chainAddress = "http://127.0.0.1:8545"
 
-		// runs an external provider that returns fixed values for testing
-		runValueProvider()
+		chainAddress = "http://127.0.0.1:8545"
 		valueProviderBaseUrl = "http://localhost:3101"
 	}
 
@@ -57,14 +56,14 @@ func TestClient(t *testing.T) {
 	cfgClient := config.FastUpdateClientConfig{
 		SigningPrivateKey:   "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
 		SortitionPrivateKey: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
-		SubmissionWindow:    5,
+		SubmissionWindow:    4,
 		MaxWeight:           1024,
 	}
 	cfgTransactions := config.TransactionsConfig{
 		Accounts: []string{"0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
 			"0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
 			"0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131"},
-		GasLimit:           8000000,
+		GasLimit:           80000000,
 		GasPriceMultiplier: 1.2,
 	}
 	cfgLog := config.LoggerConfig{Level: "DEBUG", Console: true, File: "../logger/logs/flare-ftso-indexer_test.log"}
@@ -100,36 +99,62 @@ func TestClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	feedIds, err := client.GetCurrentFeedIds()
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexes := make([]int, len(feedIds))
+	for i := range indexes {
+		indexes[i] = i
+	}
+	startingFeeds, _, err := client.GetFeeds(indexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = client.Run(blockNum, blockNum+10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	client.Stop()
 
-	if chainNode != "docker_ganache" {
-		time.Sleep(time.Second)
-		// stopping a ganache node
-		cmd := exec.Command("bash", "-c", "docker compose stop ganache")
-		cmd.Dir = "../tests"
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run() //nolint:errcheck
+	feeds, _, err := client.GetFeeds(indexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scaleBig, err := client.GetScale()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scaleFloat, _ := scaleBig.Float64()
+	scale := scaleFloat / math.Pow(2, 127)
+
+	downDockerContainers()
+	if client.Stats.NumUpdates == 0 {
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("no updates submitted")
 		}
-		stopValueProvider()
+	}
+
+	if client.Stats.NumSuccessfulUpdates == 0 {
+		if err != nil {
+			t.Fatal("no successful update")
+		}
+	}
+
+	for i, val := range feeds {
+		// all updates are expected to be negative
+		expectedVal := startingFeeds[i] * math.Pow(scale, -float64(client.Stats.NumSuccessfulUpdates))
+		if expectedVal*0.999 > val && expectedVal*1.001 < val {
+			if err != nil {
+				t.Fatal("final feed values not correct:", expectedVal, val)
+			}
+		}
 	}
 }
 
-// Can set VALUE_PROVIDER_IMPL to "fixed" or "random" to return 0.01 or random values for all feeds.
-func runValueProvider() {
-	cmd := exec.Command("bash", "-c", "VALUE_PROVIDER_IMPL=random docker compose up value-provider")
+func downDockerContainers() {
+	cmd := exec.Command("bash", "-c", "docker compose down ganache value-provider")
 	cmd.Dir = "../tests"
-	go cmd.Run() //nolint:errcheck
-}
-
-func stopValueProvider() {
-	cmd := exec.Command("bash", "-c", "docker compose stop value-provider")
-	cmd.Dir = "../tests"
-	go cmd.Run() //nolint:errcheck
+	cmd.Run() //nolint:errcheck
 }

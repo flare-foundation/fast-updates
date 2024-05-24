@@ -32,10 +32,11 @@ type Config struct {
 }
 
 type LoggerConfig struct {
-	Level         string `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
-	File          string `toml:"file"`
-	MaxFileSize   int    `toml:"max_file_size"` // In megabytes
-	Console       bool   `toml:"console"`
+	Level       string  `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
+	File        string  `toml:"file"`
+	MaxFileSize int     `toml:"max_file_size"` // In megabytes
+	Console     bool    `toml:"console"`
+	MinBalance  float64 `toml:"min_balance"`
 	FeedValuesLog int    `toml:"feed_values_log"`
 }
 
@@ -52,9 +53,8 @@ type FastUpdateClientConfig struct {
 	IncentiveManagerAddress         string `toml:"incentive_manager_address"`
 	FlareSystemManagerAddress       string `toml:"flare_system_manager"`
 	MockAddress                     string `toml:"mock_address"`
-	SigningPrivateKey               string `toml:"signing_private_key" envconfig:"PRIVATE_KEY"`
+	SigningPrivateKey               string `toml:"signing_private_key" envconfig:"SIGNING_PRIVATE_KEY"`
 	SortitionPrivateKey             string `toml:"sortition_private_key" envconfig:"SORTITION_PRIVATE_KEY"`
-	AdvanceBlocks                   int    `toml:"advance_blocks"`
 	SubmissionWindow                int    `toml:"submission_window"`
 	MaxWeight                       int    `toml:"max_weight"`
 	ValueProviderUrl                string `toml:"value_provider_base_url"`

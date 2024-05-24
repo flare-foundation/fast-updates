@@ -4,7 +4,6 @@ sortition_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdf
 fast_updater_address = "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
 flare_system_manager = "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
 submission_window = 8
-advance_blocks = 0
 max_weight = 256
 value_provider_base_url = "http://host.docker.internal:3101"
 

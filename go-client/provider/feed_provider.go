@@ -9,8 +9,9 @@ import (
 )
 
 type ValuesDecimals struct {
-	Feeds    []*big.Int
-	Decimals []int8
+	Feeds     []*big.Int
+	Decimals  []int8
+	Timestamp uint64
 }
 
 // Values provider is an interface needed to provide current off-chain values.
@@ -21,12 +22,15 @@ type ValuesProvider interface {
 // GetDeltas calculates the deltas between the provider values and the chain values for each feed.
 // It returns the deltas as a byte slice, the deltas as a string, and any error that occurred.
 // rawChainValues and providerValues contain values for supported feeds.
-func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeedIndex []int, scale *big.Int) ([]byte, string, error) {
+func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeedIndex []int, scale, sampleSize *big.Int) ([]byte, string, error) {
 	if len(chainValues) != len(providerValues) {
 		return nil, "", errors.New("chain and provider values length mismatch")
 	}
+	expectedSampleSize, _ := sampleSize.Float64()
+	expectedSampleSize /= math.Pow(2, 120)
+	// calculate the approx. expected change that all updates in one block do
 	scaleDiff, _ := new(big.Int).Sub(scale, new(big.Int).Exp(big.NewInt(2), big.NewInt(127), nil)).Float64()
-	scaleDiff = scaleDiff / math.Pow(2, 127)
+	scaleDiff = (scaleDiff / math.Pow(2, 127)) * expectedSampleSize
 
 	lastFeedIndex := valueIndexToFeedIndex[len(valueIndexToFeedIndex)-1]
 	deltasList := make([]byte, lastFeedIndex+1)
