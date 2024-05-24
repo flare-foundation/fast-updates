@@ -7,7 +7,6 @@ submission_address = "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
 flare_system_manager = "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
 incentive_manager_address = "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
 submission_window = 8
-advance_blocks = 0
 max_weight = 256
 value_provider_base_url = "http://host.docker.internal:3101"
 

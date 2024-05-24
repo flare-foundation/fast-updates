@@ -4,14 +4,13 @@
 [client]
 signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
-fast_updater_address = "0x8280D40C9E9F04229D2435EAad6e0011309ce81B"
-fast_updates_configuration_address = "0xee61C304E6b07a0a4BB36e956cFDBbD7D665173E"
-submission_address = "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
+fast_updater_address = "0x9B931f5d3e24fc8C9064DB35bDc8FB4bE0E862f9"
+fast_updates_configuration_address = "0x9A53e14B58383642cdB2bb4D5C46989F05C6B5f9"
+submission_address = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
 mock_address = "0xd4e934C2749CA8C1618659D02E7B28B074bf4df7"
-flare_system_manager = "0xd4e934C2749CA8C1618659D02E7B28B074bf4df7"
-incentive_manager_address = "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
+flare_system_manager = "0x85680Dd93755Fe5d0789773fd0896cEE51F9e358"
+incentive_manager_address = "0xc1a22A1d295e829Caf3be61bd1E11E5eEd7f0F15"
 submission_window = 10
-advance_blocks = 0
 max_weight = 512
 value_provider_base_url = "http://localhost:3101"
 
@@ -32,5 +31,5 @@ file = "./logger/logs/fast_updates_client.log"
 console = true
 
 [chain]
-node_url = "http://127.0.0.1:8545"
-chain_id = 1337
+node_url = "https://coston-api.flare.network/ext/bc/C/rpc"
+chain_id = 16

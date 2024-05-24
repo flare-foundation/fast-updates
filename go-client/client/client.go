@@ -38,11 +38,17 @@ type FastUpdatesClient struct {
 	transactionQueue    *TransactionQueue
 	allFeeds            []provider.FeedId
 	loggingParams       config.LoggerConfig
+	Stats               UpdatesStats
 }
 
 type Account struct {
 	Address    common.Address
 	PrivateKey *ecdsa.PrivateKey
+}
+
+type UpdatesStats struct {
+	NumUpdates           uint64
+	NumSuccessfulUpdates uint64
 }
 
 const (
@@ -238,9 +244,9 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 			}
 			logger.Info("new epoch, my weight weight %d, current block %d", weight, blockNum)
 		}
-		cutoff, err := client.GetCurrentScoreCutoff()
+		cutoff, err := client.GetBlockScoreCutoff(big.NewInt(int64(blockNum))) // todo
 		if err != nil {
-			return fmt.Errorf("Run: GetCurrentScoreCutoff: %w", err)
+			return fmt.Errorf("Run: GetCurrentScoreCutoff for block %d: %w", blockNum, err)
 		}
 
 		updateProofs, err := sortition.FindUpdateProofs(client.key, seed, cutoff, big.NewInt(int64(blockNum)), weight)
@@ -250,6 +256,17 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 		for _, updateProof := range updateProofs {
 			logger.Info("scheduling update for block %d replicate %d", updateProof.BlockNumber, updateProof.Replicate)
 			client.SubmitUpdates(updateProof)
+			client.Stats.NumUpdates++
+		}
+
+		if len(updateProofs) > 0 {
+			balances, err := client.GetBalances()
+			if err != nil {
+				logger.Error("could not obtain balances: %s", err)
+			}
+			if !CheckBalances(balances, client.loggingParams.MinBalance) {
+				logger.Warn("account balance low: %s", balances)
+			}
 		}
 
 		if client.loggingParams.FeedValuesLog != 0 && blockNum%uint64(client.loggingParams.FeedValuesLog) == 0 {
@@ -263,7 +280,7 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 		}
 
 		// do not calculate in advance more than specified
-		err = WaitForBlock(client.transactionQueue, blockNum-uint64(client.params.AdvanceBlocks))
+		err = WaitForBlock(client.transactionQueue, blockNum)
 		if err != nil {
 			return fmt.Errorf("Run: WaitForBlock: %w", err)
 		}

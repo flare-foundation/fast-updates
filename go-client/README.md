@@ -23,15 +23,23 @@ FTSOv2 Top Level system (see [link](https://github.com/flare-foundation/ftso-v2-
 where it registers its **sortition private kay** (see
 below on how to generate the sortition key).
 
+Set private information in environment variables
+
+```bash
+# voters private key registered in the VoterRegistry, aka signingPolicy private key
+SIGNING_PRIVATE_KEY="0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+# voters sortition key registered in the VoterRegistry contract that enables generating verifiable
+# randomness to determine the order of clients submitting the fast updates
+SORTITION_PRIVATE_KEY="0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+# private keys of accounts from which the fast updates will be
+# submitted - the client needs multiple addresses to not miss the
+# submission window in case multiple fast updates can be submitted
+# for blocks in a short interval
+ACCOUNTS="0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb,0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569,0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131"
+```
+
 ```toml
 [client]
-# private key corresponding to voter's "signingPolicyAddress"
-# can also be set up with environment variable PRIVATE_KEY
-signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
-# voters sortition key registered in the VoterRegistry contract that enables to generate verifiable
-# randomness to determine the order of clients submitting the fast updates
-# can also be set up with environment variable SORTITION_PRIVATE_KEY
-sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 # address of the FastUpdater contract
 fast_updater_address = "0xbe65A1F9a31D5E81d5e2B863AEf15bF9b3d92891"
 # address of the Submission contract to which the updates are sent
@@ -44,16 +52,6 @@ incentive_manager_address = "0x919b4b4B561C72c990DC868F751328eF127c45F4"
 submission_window = 10
 
 [transactions]
-# private keys of accounts from which the fast updates will be
-# submitted - the client needs multiple addresses to not miss the
-# submission window in case multiple fast updates can be submitted
-# for blocks in a short interval
-# can also be set up with environment variable ACCOUNTS
-accounts = [
-    "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
-    "0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
-    "0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131",
-]
 gas_limit = 8000000
 value = 0
 gas_price_multiplier = 1.2
@@ -63,6 +61,9 @@ gas_price_multiplier = 1.2
 level = "INFO"
 file = "./logger/logs/fast_updates_client.log"
 console = true
+# when the balance (in WEI) of the provided accounts falls bellow this value
+# the logger will show warnings
+min_balance = 10000000000000000000
 
 [chain]
 node_url = "https://coston2-api.flare.network/ext/C/rpc"
@@ -71,8 +72,9 @@ api_key = ""
 chain_id = 114
 ```
 
-It is advised that the private key, sortition private key, and accounts private keys
-are set using environment variables to avoid accidentally exposing them.
+The private key, sortition private key, and accounts private keys can also be set in
+the configuration file, but we strongly suggest to set them using environment variables
+to avoid accidentally exposing them.
 
 ## Price Updates Provider
 
@@ -94,8 +96,8 @@ one can define in `main.go` which price provider will be used.
 
 ## Running the FTSO Fast Updates Client
 
-Assuming that the configuration file was set and the provider is
-registered, simply run
+Assuming that the configuration file and configuration environment variables ware set and
+the provider is registered, simply run
 
 ```bash
 go run main.go --config config.toml
