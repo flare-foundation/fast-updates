@@ -61,7 +61,6 @@ func (c *HttpValuesProvider) post(endpoint string, requestBody []byte) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36")
 	req.Header.Set("accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 
@@ -71,7 +70,7 @@ func (c *HttpValuesProvider) post(endpoint string, requestBody []byte) ([]byte, 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 201 {
+	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("%s (Code: %d)", resp.Status, resp.StatusCode)
 	}
 
