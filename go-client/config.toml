@@ -12,7 +12,7 @@ flare_system_manager = "0x85680Dd93755Fe5d0789773fd0896cEE51F9e358"
 incentive_manager_address = "0xc1a22A1d295e829Caf3be61bd1E11E5eEd7f0F15"
 submission_window = 10
 max_weight = 512
-value_provider_base_url = "http://localhost:3101"
+value_provider_url = "http://127.0.0.1:3101/feed-values/0"
 
 [transactions]
 accounts = [

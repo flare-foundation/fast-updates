@@ -8,11 +8,7 @@ import (
 func TestStringToDeltas(t *testing.T) {
 	update := "+-0+"
 	expected := []byte{113}
-	result, err := provider.StringToDeltas(update)
-
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
+	result := provider.StringToDeltas(update)
 
 	if len(result) != len(expected) {
 		t.Errorf("Expected length of result to be %d, but got %d", len(expected), len(result))

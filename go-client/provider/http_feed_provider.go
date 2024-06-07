@@ -5,50 +5,23 @@ import (
 	"encoding/json"
 	"fast-updates-client/logger"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 )
 
-type FeedValue struct {
-	Feed  FeedId  `json:"feed"`
-	Value float64 `json:"value"`
-}
-
-type HttpValuesProvider struct {
-	baseUrl    string
-	httpClient *http.Client
-}
-
-func (p *HttpValuesProvider) GetValues(feeds []FeedId) ([]float64, error) {
-	feedValues, err := p.GetFeedValues(feeds)
-	if err != nil {
-		return nil, err
-	}
-	values, err := sortFeedValues(feeds, feedValues)
-	if err != nil {
-		return nil, err
-	}
-
-	return values, err
-}
-
-func NewHttpValueProvider(baseUrl string) *HttpValuesProvider {
-	logger.Info("Creating new feed values provider")
-
-	return &HttpValuesProvider{
-		baseUrl:    baseUrl,
-		httpClient: http.DefaultClient,
-	}
-}
-
-// Define the struct for the payload
-type FeedValuesRequest struct {
-	Feeds []FeedId `json:"feeds"`
-}
-
 type FeedId struct {
 	Category byte   `json:"category"`
 	Name     string `json:"name"`
+}
+
+type FeedValue struct {
+	Feed  FeedId   `json:"feed"`
+	Value *float64 `json:"value"`
+}
+
+type FeedValuesRequest struct {
+	Feeds []FeedId `json:"feeds"`
 }
 
 type FeedValuesResponse struct {
@@ -56,53 +29,75 @@ type FeedValuesResponse struct {
 	Data          []FeedValue `json:"data"`
 }
 
-func (c *HttpValuesProvider) post(endpoint string, requestBody []byte) ([]byte, error) {
-	req, err := http.NewRequest("POST", c.baseUrl+endpoint, bytes.NewBuffer(requestBody))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36")
-	req.Header.Set("accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 201 {
-		return nil, fmt.Errorf("%s (Code: %d)", resp.Status, resp.StatusCode)
-	}
-
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return responseBody, nil
+type HttpValuesProvider struct {
+	Url        string
+	httpClient *http.Client
 }
 
-func (c *HttpValuesProvider) GetFeedValues(feeds []FeedId) ([]FeedValue, error) {
+func NewHttpValueProvider(url string) *HttpValuesProvider {
+	logger.Info("Creating new feed values provider")
+
+	return &HttpValuesProvider{
+		Url:        url,
+		httpClient: http.DefaultClient,
+	}
+}
+
+func (p *HttpValuesProvider) GetValues(feeds []FeedId) ([]*float64, error) {
+	feedValues, err := p.GetFeedValues(feeds)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting feed values")
+	}
+	values := sortFeedValues(feeds, feedValues)
+
+	return values, err
+}
+
+func (p *HttpValuesProvider) GetFeedValues(feeds []FeedId) ([]FeedValue, error) {
 	req, err := json.Marshal(
 		FeedValuesRequest{
 			Feeds: feeds,
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error marshalling request")
 	}
 
-	// TODO: Should we specify voting round id instead of 0?
-	body, err := c.post("/feed-values/0", req)
+	body, err := p.post(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error posting feed value request")
 	}
 
 	res := FeedValuesResponse{}
 	err = json.Unmarshal(body, &res)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error unmarshalling response")
 	}
 
 	return res.Data, nil
+}
+
+func (p *HttpValuesProvider) post(requestBody []byte) ([]byte, error) {
+	req, err := http.NewRequest("POST", p.Url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating request")
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending HTTP request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("response status %s (Code: %d)", resp.Status, resp.StatusCode)
+	}
+
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading response body")
+	}
+	return responseBody, nil
 }

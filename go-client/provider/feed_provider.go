@@ -14,9 +14,9 @@ type ValuesDecimals struct {
 	Timestamp uint64
 }
 
-// Values provider is an interface needed to provide current off-chain values.
+// ValuesProvider is an interface needed to provide current off-chain values.
 type ValuesProvider interface {
-	GetValues(feeds []FeedId) ([]float64, error)
+	GetValues(feeds []FeedId) ([]*float64, error)
 }
 
 // GetDeltas calculates the deltas between the provider values and the chain values for each feed.
@@ -40,7 +40,7 @@ func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeed
 
 	for i := 0; i < len(chainValues); i++ {
 		delta := byte('0')
-		diff := math.Abs((providerValues[i] - chainValues[i])) / chainValues[i]
+		diff := math.Abs(providerValues[i]-chainValues[i]) / chainValues[i]
 
 		if diff > scaleDiff {
 			if providerValues[i] > chainValues[i] {
@@ -63,16 +63,16 @@ func GetDeltas(chainValues []float64, providerValues []float64, valueIndexToFeed
 	}
 
 	deltasString := string(deltasList)
-	deltas, err := StringToDeltas(deltasString)
+	deltas := StringToDeltas(deltasString)
 
-	return deltas, deltasString, err
+	return deltas, deltasString, nil
 }
 
 // StringToDeltas converts a string representation of updates into a byte slice of deltas.
 // Each character in the input string represents a delta value, where '+' represents an increment of 1
 // and '-' represents an increment of 3. The deltas are packed into a byte slice, with each byte
 // containing 4 delta values.
-func StringToDeltas(update string) ([]byte, error) {
+func StringToDeltas(update string) []byte {
 	deltas := make([]byte, 0)
 	k := 0
 	var delta byte
@@ -95,20 +95,19 @@ func StringToDeltas(update string) ([]byte, error) {
 		deltas = append(deltas, delta)
 	}
 
-	return deltas, nil
+	return deltas
 }
 
 // Sorts values according to feeds order.
-func sortFeedValues(feeds []FeedId, feedValues []FeedValue) ([]float64, error) {
-	var values []float64
+func sortFeedValues(feeds []FeedId, feedValues []FeedValue) []*float64 {
+	var values []*float64
 	for _, feed := range feeds {
 		for _, v := range feedValues {
 			if v.Feed == feed {
-				value := v.Value
-				values = append(values, value)
+				values = append(values, v.Value)
 				break
 			}
 		}
 	}
-	return values, nil
+	return values
 }

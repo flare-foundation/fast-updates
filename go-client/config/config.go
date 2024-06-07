@@ -32,12 +32,12 @@ type Config struct {
 }
 
 type LoggerConfig struct {
-	Level       string  `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
-	File        string  `toml:"file"`
-	MaxFileSize int     `toml:"max_file_size"` // In megabytes
-	Console     bool    `toml:"console"`
-	MinBalance  float64 `toml:"min_balance"`
-	FeedValuesLog int    `toml:"feed_values_log"`
+	Level         string  `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
+	File          string  `toml:"file"`
+	MaxFileSize   int     `toml:"max_file_size"` // In megabytes
+	Console       bool    `toml:"console"`
+	MinBalance    float64 `toml:"min_balance"`
+	FeedValuesLog int     `toml:"feed_values_log"`
 }
 
 type ChainConfig struct {
@@ -57,7 +57,7 @@ type FastUpdateClientConfig struct {
 	SortitionPrivateKey             string `toml:"sortition_private_key" envconfig:"SORTITION_PRIVATE_KEY"`
 	SubmissionWindow                int    `toml:"submission_window"`
 	MaxWeight                       int    `toml:"max_weight"`
-	ValueProviderUrl                string `toml:"value_provider_base_url"`
+	ValueProviderUrl                string `toml:"value_provider_url"`
 }
 
 type TransactionsConfig struct {

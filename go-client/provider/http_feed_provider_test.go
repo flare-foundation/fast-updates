@@ -35,7 +35,7 @@ func TestGetProviderFeeds(t *testing.T) {
 		{Category: 1, Name: "BOL/USD"},
 	}
 	// TODO: Mock endpoint and fix test
-	feedProvider := provider.NewHttpValueProvider("http://localhost:3101/")
+	feedProvider := provider.NewHttpValueProvider("http://localhost:3101/feed-values/0")
 
 	feeds, err := feedProvider.GetValues(feedsIds)
 	if err != nil {
