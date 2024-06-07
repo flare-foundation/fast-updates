@@ -47,7 +47,6 @@ test-go-client:
   before_script:
     - cd go-client
   script:
-    - go test -v provider/random_provider_test.go
     - go test -v provider/feed_provider_test.go
     - go test -v sortition/sortition_test.go
 

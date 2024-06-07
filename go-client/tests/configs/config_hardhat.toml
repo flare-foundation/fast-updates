@@ -5,7 +5,7 @@ fast_updater_address = "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
 flare_system_manager = "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
 submission_window = 8
 max_weight = 256
-value_provider_base_url = "http://host.docker.internal:3101"
+value_provider_url = "http://host.docker.internal:3101/feed-values/0"
 
 [transactions]
 accounts = [

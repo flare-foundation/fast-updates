@@ -6,7 +6,7 @@ mock_address = "0x3b9a1E27c317DdD9c256dD5a49f7f2C67E603c06"
 flare_system_manager = "0x3b9a1E27c317DdD9c256dD5a49f7f2C67E603c06"
 submission_window = 8
 max_weight = 512
-value_provider_base_url = "http://host.docker.internal:3101"
+value_provider_url = "http://host.docker.internal:3101/feed-values/0"
 
 [transactions]
 accounts = [

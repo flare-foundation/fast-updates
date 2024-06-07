@@ -192,8 +192,7 @@ func (client *FastUpdatesClient) SubmitUpdates(updateProof *sortition.UpdateProo
 	client.transactionQueue.InputChan <- compReq
 }
 
-func (client *FastUpdatesClient) getOnlineOfflineValues() ([]int, []float64, []float64,  error) {
-	// 0 value indicates unsupported feed. TODO: need to differentiate between 0 and absent value better.
+func (client *FastUpdatesClient) getOnlineOfflineValues() ([]int, []float64, []float64, error) {
 	providerRawValues, err := client.valuesProvider.GetValues(client.allFeeds)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error getting feed values")
@@ -202,9 +201,9 @@ func (client *FastUpdatesClient) getOnlineOfflineValues() ([]int, []float64, []f
 	supportedFeedIndexes := []int{}
 	providerValues := []float64{}
 	for i, value := range providerRawValues {
-		if value != 0 {
+		if value != nil {
 			supportedFeedIndexes = append(supportedFeedIndexes, i)
-			providerValues = append(providerValues, float64(value))
+			providerValues = append(providerValues, *value)
 		}
 	}
 
