@@ -152,11 +152,11 @@ go run keygen/keygen.go --key 0x1512de600a10a0aac01580dbfc080965b89ed2329a7b2bf5
 
 where the key value needs to be replaced by the generated private key and the address value needs
 to be replaced by the actual address that will be used to sign the updates.
-Alternatively, one can save and read the key from a file and save the signature with:
+Alternatively, one can save and read the (encrypted) key from a file and save the signature with:
 
 ```bash
-go run keygen/keygen.go --key_out keys.out
-go run keygen/keygen.go --key_file keys.out --address 0xd4e934C2749CA8C1618659D02E7B28B074bf4df7 --sig_out sig.out
+go run keygen/keygen.go --key_out keys.out --pass secret_password
+go run keygen/keygen.go --key_file keys.out --pass secret_password --address 0xd4e934C2749CA8C1618659D02E7B28B074bf4df7 --sig_out sig.out
 ```
 
 where the address value needs to be replaced by the actual address that will be used to sign
