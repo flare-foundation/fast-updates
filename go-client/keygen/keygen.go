@@ -207,8 +207,8 @@ func main() {
 			logger.Info("Saved the signature in file " + *SigOutFlag)
 		}
 	} else {
-		// in case that key was read and decrypted from a file, but not used for the signature, just print it
-		if *InFileFlag != "" {
+		// in the case that a key was provided but not used for the signature, just print it out
+		if *InFileFlag != "" || *InFlag != "" {
 			keysString := keyStrings{PrivateKey: "0x" + keys.Sk.Text(16), PublicKeyX: "0x" + keys.Pk.X.Text(16), PublicKeyY: "0x" + keys.Pk.Y.Text(16)}
 			keyBytes, err := json.Marshal(keysString)
 			if err != nil {
