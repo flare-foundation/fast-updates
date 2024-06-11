@@ -18,6 +18,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -27,6 +28,7 @@ var InFileFlag = flag.String("key_file", "", "File to load private and public ke
 var KeyOutFlag = flag.String("key_out", "", "File to save a freshly generated private and public key")
 var PassFlag = flag.String("pass", "", "Password for encrypting/decrypting private key")
 var SigOutFlag = flag.String("sig_out", "", "File to save a signature")
+var uint256Ty, _ = abi.NewType("uint256", "uint256", nil)
 
 type keyStrings struct {
 	PublicKeyX string
@@ -41,9 +43,7 @@ type keyEncrypted struct {
 }
 
 type sigStrings struct {
-	RX string
-	RY string
-	S  string
+	Signature string
 }
 
 func main() {
@@ -170,21 +170,33 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		sigStrings := sigStrings{S: "0x" + signature.S.Text(16), RX: "0x" + signature.R.X.Text(16), RY: "0x" + signature.R.Y.Text(16)}
-		sigBytes, err := json.Marshal(sigStrings)
+
+		arguments := abi.Arguments{
+			{Type: uint256Ty}, {Type: uint256Ty}, {Type: uint256Ty},
+		}
+		sigBytes, err := arguments.Pack(
+			signature.S,
+			signature.R.X.BigInt(new(big.Int)),
+			signature.R.Y.BigInt(new(big.Int)),
+		)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		if *SigOutFlag == "" {
-			logger.Info("Signature generated: " + string(sigBytes))
+			logger.Info("Signature generated: 0x" + hex.EncodeToString(sigBytes))
 		} else {
 			f, err := os.Create(*SigOutFlag)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			_, err = f.Write(sigBytes)
+			sigStruct := sigStrings{Signature: "0x" + hex.EncodeToString(sigBytes)}
+			sigToWrite, err := json.Marshal(sigStruct)
+			if err != nil {
+				log.Fatal(err)
+			}
+			_, err = f.Write(sigToWrite)
 			if err != nil {
 				log.Fatal(err)
 			}
