@@ -155,8 +155,9 @@ to be replaced by the actual address that will be used to sign the updates.
 Alternatively, one can save and read the (encrypted) key from a file and save the signature with:
 
 ```bash
-go run keygen/keygen.go --key_out keys.out --pass secret_password
-go run keygen/keygen.go --key_file keys.out --pass secret_password --address 0xd4e934C2749CA8C1618659D02E7B28B074bf4df7 --sig_out sig.out
+go run keygen/keygen.go --key_out keys.out --pass secret_password # generate and save a key to file
+go run keygen/keygen.go --key_file keys.out --pass secret_password --address 0xd4e934C2749CA8C1618659D02E7B28B074bf4df7 --sig_out sig.out # read and decrypt a key from a file, sign and write the signature to a file
+go run keygen/keygen.go --key_file keys.out --pass secret_password # read and decrypt a key from file, just print it out
 ```
 
 where the address value needs to be replaced by the actual address that will be used to sign
