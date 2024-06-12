@@ -50,6 +50,8 @@ flare_system_manager = "0x919b4b4B561C72c990DC868F751328eF127c45F4"
 incentive_manager_address = "0x919b4b4B561C72c990DC868F751328eF127c45F4"
 # parameter defining when a fast update can be submitted
 submission_window = 10
+# url of the off-chain data provider 
+value_provider_url = "http://127.0.0.1:3101/feed-values/0"
 
 [transactions]
 gas_limit = 8000000

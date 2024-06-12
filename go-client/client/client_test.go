@@ -19,10 +19,10 @@ import (
 func TestClient(t *testing.T) {
 	chainNode := os.Getenv("CHAIN_NODE")
 	chainAddress := ""
-	valueProviderBaseUrl := ""
+	valueProviderUrl := ""
 	if chainNode == "docker_ganache" {
 		chainAddress = "http://ganache:8545"
-		valueProviderBaseUrl = "http://value-provider:3101"
+		valueProviderUrl = "http://value-provider:3101/feed-values/0"
 	} else {
 		// running a ganache node and an external provider that returns fixed values for testing
 		logger.Info("starting a ganache chain node and data provider")
@@ -34,7 +34,7 @@ func TestClient(t *testing.T) {
 		go cmd.Run() //nolint:errcheck
 
 		chainAddress = "http://127.0.0.1:8545"
-		valueProviderBaseUrl = "http://localhost:3101"
+		valueProviderUrl = "http://localhost:3101/feed-values/0"
 	}
 
 	// set chain parameters
@@ -80,7 +80,7 @@ func TestClient(t *testing.T) {
 	cfg.Client.MockAddress = contracts.Mock.Hex()
 	cfg.Client.IncentiveManagerAddress = contracts.IncentiveManager.Hex()
 
-	updatesProvider := provider.NewHttpValueProvider(valueProviderBaseUrl)
+	updatesProvider := provider.NewHttpValueProvider(valueProviderUrl)
 
 	client, err := client.CreateFastUpdatesClient(&cfg, updatesProvider)
 	if err != nil {
@@ -131,15 +131,11 @@ func TestClient(t *testing.T) {
 
 	downDockerContainers()
 	if client.Stats.NumUpdates == 0 {
-		if err != nil {
-			t.Fatal("no updates submitted")
-		}
+		t.Fatal("no updates submitted")
 	}
 
 	if client.Stats.NumSuccessfulUpdates == 0 {
-		if err != nil {
-			t.Fatal("no successful update")
-		}
+		t.Fatal("no successful update")
 	}
 
 	for i, val := range feeds {
