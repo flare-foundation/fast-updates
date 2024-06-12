@@ -15,6 +15,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
@@ -63,7 +64,7 @@ func main() {
 		}
 
 		if *KeyOutFlag == "" {
-			keysString := keyStrings{PrivateKey: "0x" + keys.Sk.Text(16), PublicKeyX: "0x" + keys.Pk.X.Text(16), PublicKeyY: "0x" + keys.Pk.Y.Text(16)}
+			keysString := keyStrings{PrivateKey: PadKey(keys.Sk.Text(16)), PublicKeyX: PadKey(keys.Pk.X.Text(16)), PublicKeyY: PadKey(keys.Pk.Y.Text(16))}
 			keyBytes, err := json.Marshal(keysString)
 			if err != nil {
 				log.Fatal(err)
@@ -79,7 +80,7 @@ func main() {
 				log.Fatal(err)
 			}
 
-			keyEncrypted := keyEncrypted{EncryptedPrivateKey: encryptedPrivateKey, PublicKeyX: "0x" + keys.Pk.X.Text(16), PublicKeyY: "0x" + keys.Pk.Y.Text(16)}
+			keyEncrypted := keyEncrypted{EncryptedPrivateKey: encryptedPrivateKey, PublicKeyX: PadKey(keys.Pk.X.Text(16)), PublicKeyY: PadKey(keys.Pk.Y.Text(16))}
 			keyBytes, err := json.Marshal(keyEncrypted)
 			if err != nil {
 				log.Fatal(err)
@@ -182,6 +183,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		if len(sigBytes) != 96 {
+			log.Fatal("signature not correct length")
+		}
 
 		if *SigOutFlag == "" {
 			logger.Info("Signature generated: 0x" + hex.EncodeToString(sigBytes))
@@ -209,7 +213,7 @@ func main() {
 	} else {
 		// in the case that a key was provided but not used for the signature, just print it out
 		if *InFileFlag != "" || *InFlag != "" {
-			keysString := keyStrings{PrivateKey: "0x" + keys.Sk.Text(16), PublicKeyX: "0x" + keys.Pk.X.Text(16), PublicKeyY: "0x" + keys.Pk.Y.Text(16)}
+			keysString := keyStrings{PrivateKey: PadKey(keys.Sk.Text(16)), PublicKeyX: PadKey(keys.Pk.X.Text(16)), PublicKeyY: PadKey(keys.Pk.Y.Text(16))}
 			keyBytes, err := json.Marshal(keysString)
 			if err != nil {
 				log.Fatal(err)
@@ -217,6 +221,13 @@ func main() {
 			logger.Info("Key: " + string(keyBytes))
 		}
 	}
+}
+
+func PadKey(hexKey string) string {
+	if len(hexKey) > 64 {
+		logger.Fatal("key too long")
+	}
+	return "0x" + strings.Repeat("0", 64-len(hexKey)) + hexKey
 }
 
 func Encrypt(password, data []byte) ([]byte, error) {
