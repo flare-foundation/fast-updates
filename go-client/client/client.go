@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -53,6 +54,7 @@ type UpdatesStats struct {
 
 const (
 	refreshFeedsBlockInterval = 100
+	cutoffRepeats             = 10
 )
 
 func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesProvider) (*FastUpdatesClient, error) {
@@ -244,9 +246,10 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 			}
 			logger.Info("new epoch, my weight weight %d, current block %d", weight, blockNum)
 		}
-		cutoff, err := client.GetBlockScoreCutoff(big.NewInt(int64(blockNum))) // todo
+
+		cutoff, err := client.GetBlockScoreCutoffWithRepeats(blockNum)
 		if err != nil {
-			return fmt.Errorf("Run: GetCurrentScoreCutoff for block %d: %w", blockNum, err)
+			return fmt.Errorf("Run: GetBlockScoreCutoffWithRepeats: %w", err)
 		}
 
 		updateProofs, err := sortition.FindUpdateProofs(client.key, seed, cutoff, big.NewInt(int64(blockNum)), weight)
@@ -290,6 +293,24 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 			return nil
 		}
 	}
+}
+
+
+func (client *FastUpdatesClient) GetBlockScoreCutoffWithRepeats(blockNum uint64) (*big.Int, error) {
+	var cutoff *big.Int
+	var err error
+	for i := 0; i < cutoffRepeats; i++ {
+		cutoff, err = client.GetBlockScoreCutoff(big.NewInt(int64(blockNum)))
+		if err == nil {
+			break
+		}
+		if blockNum <= client.transactionQueue.CurrentBlockNum-uint64(client.params.SubmissionWindow)+1 || i == cutoffRepeats-1 {
+			return nil, fmt.Errorf("Run: GetCurrentScoreCutoff for block %d: %w", blockNum, err)
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	return cutoff, err
 }
 
 func (client *FastUpdatesClient) WaitToEmptyRequests() {
