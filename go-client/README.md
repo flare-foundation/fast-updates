@@ -151,7 +151,7 @@ go run keygen/keygen.go --key 0x1512de600a10a0aac01580dbfc080965b89ed2329a7b2bf5
 ```
 
 where the key value needs to be replaced by the generated private key and the address value needs
-to be replaced by the actual address that will be used to sign the updates.
+to be replaced by the actual _entity_ address.
 
 In case you forgot your public key, but saved the private one, you can run the following for outputting the key:
 ```bash
