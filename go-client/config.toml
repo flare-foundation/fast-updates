@@ -20,9 +20,9 @@ accounts = [
     "0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
     "0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131",
 ]
-gas_limit = 8000000
+gas_limit = 2500000
 value = 0
-gas_price_multiplier = 1.2
+gas_price_multiplier = 2.5
 
 
 [logger]

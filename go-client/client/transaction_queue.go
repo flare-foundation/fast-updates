@@ -94,7 +94,7 @@ func (txQueue *TransactionQueue) QueueExecution(i int) {
 			}
 		}
 		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
-		nonce, err := txQueue.chainClient.PendingNonceAt(ctx, txQueue.accounts[i].Address)
+		nonce, err := txQueue.chainClient.NonceAt(ctx, txQueue.accounts[i].Address, nil)
 		cancelFunc()
 		if err != nil {
 			txQueue.ErrChan <- &ErrorRequest{err, compReq}
