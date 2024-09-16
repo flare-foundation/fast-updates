@@ -1,6 +1,6 @@
 [client]
-signing_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908d"
-sortition_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908d"
+signing_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908f"
+sortition_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908f"
 fast_updater_address = "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
 fast_updates_configuration_address = "0x06bA8d8af0dF898D0712DffFb0f862cC51AF45c2"
 submission_address = "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
@@ -16,9 +16,9 @@ accounts = [
     "0xef47811d16008e26090a629d205cb80a57e0515ab73349cd01eb4f18d29782bf",
     "0x4be7bbacf640bb188f4d7faaba95537c5d81c860af42ca9c84e56f0214d4742d",
 ]
-gas_limit = 8000000
+gas_limit = 2500000
 value = 0
-gas_price_multiplier = 1.2
+gas_price_multiplier = 2.5
 
 [logger]
 level = "INFO"
