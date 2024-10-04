@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 
@@ -296,4 +297,16 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 	logger.Info("chain feeds values in block %d (after update): %v", receipt.BlockNumber.Int64(), chainValues)
 
 	return nil
+}
+
+func (client *FastUpdatesClient) GetFastUpdaterContractAddress() (common.Address, error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
+	ops := &bind.CallOpts{Context: ctx}
+	fastUpdaterContractAddress, err := client.submission.SubmitAndPassContract(ops)
+	cancelFunc()
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	return fastUpdaterContractAddress, nil
 }
