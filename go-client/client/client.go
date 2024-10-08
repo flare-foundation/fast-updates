@@ -105,12 +105,15 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 		fastUpdatesClient.transactionAccounts[i].Address = crypto.PubkeyToAddress(*publicKeyECDSA)
 	}
 
-	fastUpdatesClient.fastUpdater, err = fast_updater.NewFastUpdater(
-		common.HexToAddress(cfg.Client.FastUpdaterAddress), fastUpdatesClient.chainClient,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("CreateFastUpdatesClient: NewFastUpdater: %w", err)
+	if cfg.Client.FastUpdaterAddress != "" {
+		fastUpdatesClient.fastUpdater, err = fast_updater.NewFastUpdater(
+			common.HexToAddress(cfg.Client.FastUpdaterAddress), fastUpdatesClient.chainClient,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("CreateFastUpdatesClient: NewFastUpdater: %w", err)
+		}
 	}
+
 	fastUpdatesClient.IncentiveManager, err = incentive.NewIncentive(
 		common.HexToAddress(cfg.Client.IncentiveManagerAddress), fastUpdatesClient.chainClient,
 	)
@@ -132,6 +135,11 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 		if err != nil {
 			return nil, fmt.Errorf("CreateFastUpdatesClient: NewSubmission: %w", err)
 		}
+	}
+
+	err = fastUpdatesClient.UpdateFastUpdaterContractAddress()
+	if err != nil {
+		return nil, err
 	}
 
 	fastUpdatesClient.flareSystemMock, err = mock.NewMock(
@@ -209,6 +217,11 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 	logger.Info("Fetched feed ids: %v", client.allFeeds)
 
 	for {
+		err = client.UpdateFastUpdaterContractAddress()
+		if err != nil {
+			logger.Error("Failed attempt in updating the FastUpdater contract address: %s", err)
+		}
+
 		if blockNum%refreshFeedsBlockInterval == 0 {
 			client.allFeeds, err = client.GetCurrentFeedIds()
 			if err != nil {
@@ -295,7 +308,6 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 	}
 }
 
-
 func (client *FastUpdatesClient) GetBlockScoreCutoffWithRepeats(blockNum uint64) (*big.Int, error) {
 	var cutoff *big.Int
 	var err error
@@ -319,4 +331,28 @@ func (client *FastUpdatesClient) WaitToEmptyRequests() {
 
 func (client *FastUpdatesClient) Stop() {
 	client.transactionQueue.StopQueue()
+}
+
+func (client *FastUpdatesClient) UpdateFastUpdaterContractAddress() error {
+	if client.submission == nil {
+		return nil
+	}
+
+	newAddress, err := client.GetFastUpdaterContractAddress()
+	if err != nil {
+		return err
+	}
+	if newAddress != common.HexToAddress(client.params.FastUpdaterAddress) {
+		client.fastUpdater, err = fast_updater.NewFastUpdater(
+			newAddress, client.chainClient,
+		)
+		if err != nil {
+			return err
+		}
+
+		client.params.FastUpdaterAddress = newAddress.Hex()
+		logger.Info("Updated the FastUpdater address to %s", client.params.FastUpdaterAddress)
+	}
+
+	return nil
 }
