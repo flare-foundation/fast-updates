@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -23,23 +24,26 @@ import (
 )
 
 type FastUpdatesClient struct {
-	params              config.FastUpdateClientConfig
-	chainClient         *ethclient.Client
-	valuesProvider      provider.ValuesProvider
-	signingAccount      *Account
-	transactionAccounts []*Account
-	fastUpdater         *fast_updater.FastUpdater
-	fastUpdatesConfig   *fast_updates_configuration.FastUpdatesConfiguration
-	submission          *submission.Submission
-	flareSystemMock     *mock.Mock
-	flareSystemManager  *system_manager.SystemManager
-	IncentiveManager    *incentive.Incentive
-	key                 *sortition.Key
-	registeredEpochs    map[int64]bool
-	transactionQueue    *TransactionQueue
-	allFeeds            []provider.FeedId
-	loggingParams       config.LoggerConfig
-	Stats               UpdatesStats
+	params                   config.FastUpdateClientConfig
+	chainClient              *ethclient.Client
+	valuesProvider           provider.ValuesProvider
+	signingAccount           *Account
+	transactionAccounts      []*Account
+	fastUpdater              *fast_updater.FastUpdater
+	fastUpdaterABI           *abi.ABI
+	fastUpdatesConfig        *fast_updates_configuration.FastUpdatesConfiguration
+	submission               *submission.Submission
+	flareSystemMock          *mock.Mock
+	flareSystemManager       *system_manager.SystemManager
+	IncentiveManager         *incentive.Incentive
+	key                      *sortition.Key
+	registeredEpochs         map[int64]bool
+	transactionQueue         *TransactionQueue
+	allFeeds                 []provider.FeedId
+	loggingParams            config.LoggerConfig
+	Stats                    UpdatesStats
+	FetchCurrentFeedsValue   *big.Int
+	FetchCurrentFeedsAddress common.Address
 }
 
 type Account struct {
@@ -113,6 +117,10 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 			return nil, fmt.Errorf("CreateFastUpdatesClient: NewFastUpdater: %w", err)
 		}
 	}
+	fastUpdatesClient.fastUpdaterABI, err = fast_updater.FastUpdaterMetaData.GetAbi()
+	if err != nil {
+		return nil, fmt.Errorf("CreateFastUpdatesClient: GetAbi: %w", err)
+	}
 
 	fastUpdatesClient.IncentiveManager, err = incentive.NewIncentive(
 		common.HexToAddress(cfg.Client.IncentiveManagerAddress), fastUpdatesClient.chainClient,
@@ -176,6 +184,17 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 
 	if fastUpdatesClient.params.MaxWeight == 0 {
 		fastUpdatesClient.params.MaxWeight = 4096
+	}
+	if cfg.Client.FetchCurrentFeedsAddress != "" {
+		fastUpdatesClient.FetchCurrentFeedsAddress = common.HexToAddress(cfg.Client.FetchCurrentFeedsAddress)
+		var check bool
+		fastUpdatesClient.FetchCurrentFeedsValue, check = new(big.Int).SetString(cfg.Client.FetchCurrentFeedsValue, 10)
+		if !check {
+			return nil, fmt.Errorf("CreateFastUpdatesClient: failed reading fetch_current_feeds_value: %s", cfg.Client.FetchCurrentFeedsValue)
+		}
+	} else {
+		fastUpdatesClient.FetchCurrentFeedsAddress = common.HexToAddress("0x000000000000000000000000000000000000dEaD")
+		fastUpdatesClient.FetchCurrentFeedsValue, _ = new(big.Int).SetString("1000000000000000000000000", 10)
 	}
 
 	return &fastUpdatesClient, nil

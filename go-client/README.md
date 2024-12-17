@@ -50,8 +50,13 @@ flare_system_manager = "0x919b4b4B561C72c990DC868F751328eF127c45F4"
 incentive_manager_address = "0x919b4b4B561C72c990DC868F751328eF127c45F4"
 # parameter defining when a fast update can be submitted
 submission_window = 10
-# url of the off-chain data provider 
+# url of the off-chain data provider
 value_provider_url = "http://127.0.0.1:3101/feed-values/0"
+# (optional) when (off-chain) fetching feeds values, an address with sufficient
+# balance should be provided, even though the transactions never happen;
+# the below address is the default one, which on flare chains has enough balance
+fetch_current_feeds_address = "0x000000000000000000000000000000000000dEaD"
+fetch_current_feeds_value = "1000000000000000000000000"
 
 [transactions]
 gas_limit = 8000000
@@ -156,6 +161,7 @@ where the key value needs to be replaced by the generated private key and the ad
 to be replaced by the actual _entity_ address.
 
 In case you forgot your public key, but saved the private one, you can run the following for outputting the key:
+
 ```bash
 go run keygen/keygen.go --key 0x1512de600a10a0aac01580dbfc080965b89ed2329a7b2bf538f4c7e09e34aa1
 ```
@@ -231,10 +237,8 @@ in the protocol.
 
 The Fast Updates Go client uses an interface to the contracts that was compiled using `solc` compiler and `abigen` tool. In the case
 that the contracts are changed, the interface needs to be changed as well. Use the provided
-`Makefile` to compile the new interfaces with
+`Makefile` to compile the new interfaces. In the makefile set the destination of the `flare-smart-contracts-v2` repo and run
 
 ```bash
 make compile
 ```
-
-assuming the submodule repository `flare-smart-contracts-v2` is up to date.

@@ -1,0 +1,31 @@
+[client]
+signing_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908a"
+sortition_private_key = "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908a"
+fast_updater_address = "0x70e8870ef234EcD665F96Da4c669dc12c1e1c116"
+fast_updates_configuration_address = "0x8D48a67e11CdB821C38c85FB92bcB3A1865aCEdF"
+submission_address = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
+flare_system_manager = "0x421c69E22f48e14Fc2d2Ee3812c59bfb81c38516"
+incentive_manager_address = "0x596C70Ad6fFFdb9b6158F1Dfd0bc32cc72B82006"
+submission_window = 8
+max_weight = 256
+value_provider_url = "http://localhost:3101/feed-values/0"
+
+[transactions]
+accounts = [
+    "0xac9f0d4e1a33b04f1424399eafa37c12dcadb858ea7b6ae979dbbfb377f3e52e",
+    "0xf7d92163b49d93b0fb810b9bb7fb2b3a7a3833495b9f04c1148fa311a538870d",
+    "0xf2369231bdf51d8b3f994b63a675ba413169bcdd27228cee057db8f18348ea7c",
+]
+gas_limit = 2500000
+value = 0
+gas_price_multiplier = 2.5
+
+[logger]
+level = "INFO"
+file = "./logger/logs/fast_updates_client_songbird.log"
+console = true
+feed_values_log = 5
+
+[chain]
+node_url = "https://songbird-api.flare.network/ext/bc/C/rpc"
+chain_id = 19

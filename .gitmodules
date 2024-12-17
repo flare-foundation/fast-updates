@@ -1,4 +1,0 @@
-[submodule "flare-smart-contracts-v2"]
-	path = flare-smart-contracts-v2
-	url = git@github.com:flare-foundation/flare-smart-contracts-v2.git
-	branch = main
