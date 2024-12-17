@@ -58,6 +58,8 @@ type FastUpdateClientConfig struct {
 	SubmissionWindow                int    `toml:"submission_window"`
 	MaxWeight                       int    `toml:"max_weight"`
 	ValueProviderUrl                string `toml:"value_provider_url"`
+	FetchCurrentFeedsValue          string `toml:"fetch_current_feeds_value"`
+	FetchCurrentFeedsAddress        string `toml:"fetch_current_feeds_address"`
 }
 
 type TransactionsConfig struct {

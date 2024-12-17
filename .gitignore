@@ -92,3 +92,7 @@ nul
 # other files
 go-client/sig.out
 go-client/keys.out
+
+# contracts
+*.bin
+*.abi

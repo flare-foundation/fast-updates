@@ -54,10 +54,12 @@ func TestClient(t *testing.T) {
 
 	// set configuration parameters
 	cfgClient := config.FastUpdateClientConfig{
-		SigningPrivateKey:   "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
-		SortitionPrivateKey: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
-		SubmissionWindow:    4,
-		MaxWeight:           1024,
+		SigningPrivateKey:        "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+		SortitionPrivateKey:      "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+		SubmissionWindow:         4,
+		MaxWeight:                1024,
+		FetchCurrentFeedsAddress: "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4",
+		FetchCurrentFeedsValue:   "10000",
 	}
 	cfgTransactions := config.TransactionsConfig{
 		Accounts: []string{"0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",

@@ -1,11 +1,11 @@
 [client]
 signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
 sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
-fast_updater_address = "0x58fb598EC6DB6901aA6F26a9A2087E9274128E59"
-fast_updates_configuration_address = "0x222768c5AbCe56Af9Fd75c5f59614a8B7F5dBe80"
-incentive_manager_address = "0xC71C1C6E6FB31eF6D948B2C074fA0d38a07D4f68"
+fast_updater_address = "0xB8336A96b4b8af89f60EA080002214191Bc8293A"
+fast_updates_configuration_address = "0x9A53e14B58383642cdB2bb4D5C46989F05C6B5f9"
+incentive_manager_address = "0x8c45666369B174806E1AB78D989ddd79a3267F3b"
 submission_address = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
-flare_system_manager = "0xA90Db6D10F856799b10ef2A77EBCbF460aC71e52"
+flare_system_manager = "0x85680Dd93755Fe5d0789773fd0896cEE51F9e358"
 submission_window = 8
 max_weight = 512
 value_provider_url = "http://localhost:3101/feed-values/0"
@@ -28,5 +28,5 @@ console = true
 feed_values_log = 1
 
 [chain]
-chain_id = 114
-node_url = "https://coston2-api.flare.network/ext/C/rpc"
+chain_id = 16
+node_url = "https://coston-api.flare.network/ext/C/rpc"

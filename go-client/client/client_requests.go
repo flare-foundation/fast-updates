@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,6 +21,8 @@ import (
 	"fast-updates-client/sortition"
 	"fast-updates-client/updates"
 )
+
+const fetchCurrentFeedsMethod = "fetchCurrentFeeds"
 
 func (client *FastUpdatesClient) CurrentBlockNumber() (uint64, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
@@ -97,19 +101,54 @@ func (client *FastUpdatesClient) GetMyWeight() (uint64, error) {
 	return weight.Uint64(), nil
 }
 
-func (client *FastUpdatesClient) GetFeeds(feedIndexes []int) ([]float64, uint64, error) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
-	ops := &bind.CallOpts{Context: ctx}
+func (client *FastUpdatesClient) callContractFetchCurrentFeeds(ctx context.Context, feedIndexes []*big.Int) (*provider.ValuesDecimals, error) {
+	fastUpdatesAddress := common.HexToAddress(client.params.FastUpdaterAddress)
 
+	input, err := client.fastUpdaterABI.Pack(fetchCurrentFeedsMethod, feedIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := ethereum.CallMsg{
+		To:    &fastUpdatesAddress,
+		Data:  input,
+		Value: client.FetchCurrentFeedsValue,
+		From:  client.FetchCurrentFeedsAddress,
+	}
+	outputBytes, err := client.chainClient.CallContract(ctx, msg, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := client.fastUpdaterABI.Unpack(fetchCurrentFeedsMethod, outputBytes)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) != 3 {
+		return nil, fmt.Errorf("ABI unpack error, length of response %d", len(res))
+	}
+
+	return &provider.ValuesDecimals{
+		Feeds:     *abi.ConvertType(res[0], new([]*big.Int)).(*[]*big.Int),
+		Decimals:  *abi.ConvertType(res[1], new([]int8)).(*[]int8),
+		Timestamp: *abi.ConvertType(res[2], new(uint64)).(*uint64),
+	}, nil
+}
+
+func (client *FastUpdatesClient) GetFeeds(feedIndexes []int) ([]float64, uint64, error) {
 	feedIndexesBigInt := make([]*big.Int, len(feedIndexes))
 	for i, index := range feedIndexes {
 		feedIndexesBigInt[i] = big.NewInt(int64(index))
 	}
 
-	feedValues, err := client.fastUpdater.FetchCurrentFeeds(ops, feedIndexesBigInt)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
+	feedValues, err := client.callContractFetchCurrentFeeds(ctx, feedIndexesBigInt)
 	cancelFunc()
+	if err != nil {
+		return nil, 0, err
+	}
 
-	floatValues := RawChainValuesToFloats(feedValues)
+	floatValues := RawChainValuesToFloats(*feedValues)
 	return floatValues, feedValues.Timestamp, err
 }
 

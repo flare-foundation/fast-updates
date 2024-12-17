@@ -20,7 +20,7 @@ var (
 // PrepareUpdates creates a struct that can be submitted to the FastUpdates contract.
 func PrepareUpdates(updateProof *sortition.UpdateProof, deltas []byte, privateKey *ecdsa.PrivateKey) (*fast_updater.IFastUpdaterFastUpdates, error) {
 	// prepare credential
-	gamma := fast_updater.Bn256G1Point{
+	gamma := fast_updater.G1Point{
 		X: updateProof.Proof.Gamma.X.BigInt(new(big.Int)),
 		Y: updateProof.Proof.Gamma.Y.BigInt(new(big.Int)),
 	}

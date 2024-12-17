@@ -11,6 +11,7 @@ import (
 	"fast-updates-client/config"
 	"fast-updates-client/contracts-interface/fast_updater"
 	"fast-updates-client/contracts-interface/fast_updates_configuration"
+	"fast-updates-client/contracts-interface/fee_calculator"
 	"fast-updates-client/contracts-interface/incentive"
 	"fast-updates-client/contracts-interface/mock"
 	"fast-updates-client/logger"
@@ -167,20 +168,33 @@ func Deploy(cfg *config.Config) ContractAddresses {
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
-	fastUpdaterContract, err := fast_updater.NewFastUpdater(fastUpdaterAddress, client)
+	feeCalculatorAddress, tx, _, err := fee_calculator.DeployFeeCalculator(opts, client, fromAddress, fromAddress, fromAddress, big.NewInt(1))
+	if err != nil {
+		logger.Fatal("Error: %s", err)
+	}
+	logger.Info("feeCalculator address %s", feeCalculatorAddress.Hex())
+	receipt, err = bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		logger.Fatal("Error: %s", err)
+	}
+	if receipt.Status == 0 {
+		reason, err := GetFailingMessage(*client, tx.Hash())
+		if err != nil {
+			logger.Fatal("Error: %s", err)
+		}
+		logger.Fatal("Error: Transaction fail: %s", reason)
+	}
+	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
+
+	feeCalculatorContract, err := fee_calculator.NewFeeCalculator(feeCalculatorAddress, client)
 	if err != nil {
 		logger.Fatal("Error: %s", err)
 	}
 
 	addressesHash := []string{
 		"0x12e7f85251b6a8cc2a2841f61f59a88110842aebcb7b0156dd0c10bd473fcb7a",
-		"0x2b5425460b937e96e509004540fff99ad6ec17948dba96effce0ba122b8bb899",
-		"0x7ae386e71020f3892e238530238dee40111e0bff57a096544e6b6806e26e8ab0",
-		"0x7de5495162bf7c2e65e3e8356a8981e85633d651c850dcb5b6e0c0b8a878a195",
 		"0x6be6257da65c607a560a35b4efea3c17b461c71f51e72de30b7c1e124e6b8153",
-		"0x597295c852f29045b82e8864e15b8a3e2c0da8de0e4fbdd3ec498197e11d6a5e",
 	}
-
 	addressesBytes := make([][32]byte, len(addressesHash))
 	for i := 0; i < len(addressesHash); i++ {
 		var buf [32]byte
@@ -193,11 +207,58 @@ func Deploy(cfg *config.Config) ContractAddresses {
 	}
 	addresses := []common.Address{
 		fromAddress,
+		fastUpdatesConfigurationAddress,
+	}
+	tx, err = feeCalculatorContract.UpdateContractAddresses(opts, addressesBytes, addresses)
+	if err != nil {
+		logger.Fatal("Error: %s", err)
+	}
+	receipt, err = bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		logger.Fatal("Error: %s", err)
+	}
+	if receipt.Status == 0 {
+		reason, err := GetFailingMessage(*client, tx.Hash())
+		if err != nil {
+			logger.Fatal("Error: %s", err)
+		}
+		logger.Fatal("Error: Transaction fail: %s", reason)
+	}
+	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
+
+	fastUpdaterContract, err := fast_updater.NewFastUpdater(fastUpdaterAddress, client)
+	if err != nil {
+		logger.Fatal("Error: %s", err)
+	}
+
+	addressesHash = []string{
+		"0x12e7f85251b6a8cc2a2841f61f59a88110842aebcb7b0156dd0c10bd473fcb7a",
+		"0x2b5425460b937e96e509004540fff99ad6ec17948dba96effce0ba122b8bb899",
+		"0x7ae386e71020f3892e238530238dee40111e0bff57a096544e6b6806e26e8ab0",
+		"0x7de5495162bf7c2e65e3e8356a8981e85633d651c850dcb5b6e0c0b8a878a195",
+		"0x6be6257da65c607a560a35b4efea3c17b461c71f51e72de30b7c1e124e6b8153",
+		"0x597295c852f29045b82e8864e15b8a3e2c0da8de0e4fbdd3ec498197e11d6a5e",
+		"0x94e7b7fc9128e3dd39886c5e5a0ad2700a92e886b7bb5f98d3dd4f5dddb2272e",
+	}
+
+	addressesBytes = make([][32]byte, len(addressesHash))
+	for i := 0; i < len(addressesHash); i++ {
+		var buf [32]byte
+		b, err := hex.DecodeString(addressesHash[i][2:])
+		if err != nil {
+			log.Fatal(err)
+		}
+		copy(buf[:], b)
+		addressesBytes[i] = buf
+	}
+	addresses = []common.Address{
+		fromAddress,
 		mockAddress,
 		incentiveAddress,
 		mockAddress,
 		fastUpdatesConfigurationAddress,
 		mockAddress,
+		feeCalculatorAddress,
 	}
 	tx, err = fastUpdaterContract.UpdateContractAddresses(opts, addressesBytes, addresses)
 	if err != nil {

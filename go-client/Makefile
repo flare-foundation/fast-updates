@@ -1,12 +1,12 @@
-FLARE_SMART_CONTRACTS_V2 = ../flare-smart-contracts-v2
-GO_CLIENT_RELATIVE = ../go-client
+FLARE_SMART_CONTRACTS_V2 = ../../flare-smart-contracts-v2
+GO_CLIENT_RELATIVE = ../fast-updates/go-client
 SOLC_OPTIONS = @openzeppelin/=node_modules/@openzeppelin/ flare-smart-contracts/=node_modules/flare-smart-contracts/ --evm-version london --optimize --optimize-runs 200
 CONTRACTS_FOLDER = contracts-interface
 
 compile: compile-solc compile-abigen 
 
 compile-solc: compile-solc-base compile-solc-mock
-compile-solc-base: compile-solc-fast_updater-abi compile-solc-fast_updater-bin compile-solc-fast_updates-configuration-abi compile-solc-fast_updates-configuration-bin compile-solc-fast_update-incentive-abi compile-solc-fast_update-incentive-bin compile-solc-submission-abi
+compile-solc-base: compile-solc-fast_updater-abi compile-solc-fast_updater-bin compile-solc-fast_updates-configuration-abi compile-solc-fast_updates-configuration-bin compile-solc-fast_update-incentive-abi compile-solc-fast_update-incentive-bin compile-solc-submission-abi compile-solc-fee_calculator-abi compile-solc-fee_calculator-bin
 compile-solc-mock: compile-solc-mock-abi compile-solc-mock-bin
 
 compile-solc-fast_updater-abi:
@@ -36,8 +36,13 @@ compile-solc-mock-abi:
 compile-solc-mock-bin:
 	cd $(FLARE_SMART_CONTRACTS_V2); solc $(SOLC_OPTIONS) --bin contracts/fastUpdates/mock/FlareSystemMock.sol -o $(GO_CLIENT_RELATIVE)/$(CONTRACTS_FOLDER)  --overwrite
 
+compile-solc-fee_calculator-abi:
+	cd $(FLARE_SMART_CONTRACTS_V2); solc $(SOLC_OPTIONS) --abi contracts/fastUpdates/implementation/FeeCalculator.sol -o $(GO_CLIENT_RELATIVE)/$(CONTRACTS_FOLDER)  --overwrite
 
-compile-abigen: compile-abigen-flare_system_manager compile-abigen-flare_mock compile-abigen-voter_registry compile-abigen-fast_updater compile-abigen-fast_update-configuration compile-abigen-fast_update-incentive compile-abigen-submission
+compile-solc-fee_calculator-bin:
+	cd $(FLARE_SMART_CONTRACTS_V2); solc $(SOLC_OPTIONS) --bin contracts/fastUpdates/implementation/FeeCalculator.sol -o $(GO_CLIENT_RELATIVE)/$(CONTRACTS_FOLDER)  --overwrite
+
+compile-abigen: compile-abigen-flare_system_manager compile-abigen-flare_mock compile-abigen-voter_registry compile-abigen-fast_updater compile-abigen-fast_update-configuration compile-abigen-fast_update-incentive compile-abigen-submission compile-abigen-fee_calculator
 
 compile-abigen-flare_system_manager:
 	cd $(CONTRACTS_FOLDER); abigen --abi=IFlareSystemsManager.abi --pkg=system_manager --out=system_manager/FlareSystemManager.go
@@ -59,3 +64,6 @@ compile-abigen-fast_update-incentive:
 
 compile-abigen-submission:
 	cd $(CONTRACTS_FOLDER); abigen --abi=Submission.abi --pkg=submission --out=submission/Submission.go
+
+compile-abigen-fee_calculator:
+	cd $(CONTRACTS_FOLDER); abigen --bin=FeeCalculator.bin --abi=FeeCalculator.abi --pkg=fee_calculator --out=fee_calculator/FeeCalculator.go
