@@ -9,23 +9,23 @@ services:
 
   deploy:
     container_name: deploy
-    image: golang:1.21.0-bullseye
+    image: ${GOLANG_IMAGE:-golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9}
     volumes:
       - "../:/client"
     working_dir: "/client"
     command: /bin/bash -c 'go run tests/test.go --config tests/configs/config_deploy.toml deploy'
-  
+
   mock_register:
     container_name: mock_register
-    image: golang:1.21.0-bullseye
+    image: ${GOLANG_IMAGE:-golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9}
     volumes:
       - "../:/client"
     working_dir: "/client"
     command: /bin/bash -c 'go run tests/test.go --config tests/configs/config1.toml register 2 && go run tests/test.go --config tests/configs/config2.toml register 2 && go run tests/test.go --config tests/configs/config3.toml register 2'
-  
+
   client1:
     container_name: client1
-    image: golang:1.21.0-bullseye
+    image: ${GOLANG_IMAGE:-golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9}
     volumes:
       - "../:/client"
     working_dir: "/client"
@@ -35,7 +35,7 @@ services:
 
   client2:
     container_name: client2
-    image: golang:1.21.0-bullseye
+    image: ${GOLANG_IMAGE:-golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9}
     volumes:
       - "../:/client"
     working_dir: "/client"
@@ -45,7 +45,7 @@ services:
 
   client3:
     container_name: client3
-    image: golang:1.21.0-bullseye
+    image: ${GOLANG_IMAGE:-golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9}
     volumes:
       - "../:/client"
     working_dir: "/client"
@@ -55,7 +55,7 @@ services:
 
   test-client:
     container_name: test-client
-    image: golang:1.21.0-bullseye
+    image: ${GOLANG_IMAGE:-golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9}
     volumes:
       - "../:/client"
     working_dir: "/client"
