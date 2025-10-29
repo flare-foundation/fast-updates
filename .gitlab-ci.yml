@@ -4,6 +4,9 @@ workflow:
       when: never
     - when: always
 
+variables:
+  GOLANG_VERSION: "1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9"
+
 # lint-ts-simulation:
 #   image: node:18
 #   before_script:
@@ -31,7 +34,7 @@ lint-py-visualizer:
     - poetry run ruff check --fix
 
 lint-go-client:
-  image: golang:1.21.0
+  image: golang:${GOLANG_VERSION}
   before_script:
     - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2
     - cd go-client
@@ -43,7 +46,7 @@ lint-go-client:
     - golangci-lint run
 
 test-go-client:
-  image: golang:1.21.0
+  image: golang:${GOLANG_VERSION}
   before_script:
     - cd go-client
   script:
@@ -58,6 +61,7 @@ test-go-client-docker:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
+    GOLANG_IMAGE: "golang:${GOLANG_VERSION}"
   before_script:
     - cd go-client/tests
   script:

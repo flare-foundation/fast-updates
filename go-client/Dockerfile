@@ -1,5 +1,5 @@
 # build executable
-FROM golang:1.21 AS builder
+FROM golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9 AS builder
 
 WORKDIR /build
 
@@ -14,7 +14,7 @@ COPY . ./
 RUN go build -o /app/client ./main.go
 RUN go build -o /app/keygen ./keygen/keygen.go
 
-FROM debian:latest AS execution
+FROM debian:trixie@sha256:72547dd722cd005a8c2aa2079af9ca0ee93aad8e589689135feaed60b0a8c08d AS execution
 
 WORKDIR /app
 
