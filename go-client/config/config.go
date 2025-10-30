@@ -41,7 +41,7 @@ type LoggerConfig struct {
 }
 
 type ChainConfig struct {
-	NodeURL string `toml:"node_url"`
+	NodeURL string `toml:"node_url" envconfig:"NODE_URL"`
 	ChainId int    `toml:"chain_id"`
 	ApiKey  string `toml:"api_key" envconfig:"API_KEY"`
 }
