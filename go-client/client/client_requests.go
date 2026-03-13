@@ -162,10 +162,10 @@ func (client *FastUpdatesClient) GetCurrentFeedIds() ([]provider.FeedId, error) 
 	}
 
 	feedIds := make([]provider.FeedId, len(rawFeedIs))
-	for i, price := range rawFeedIs {
+	for i, feedId := range rawFeedIs {
 		feedIds[i] = provider.FeedId{
-			Category: price[0],
-			Name:     strings.TrimRight(string(price[1:]), "\x00"),
+			Category: feedId[0],
+			Name:     strings.TrimRight(string(feedId[1:]), "\x00"),
 		}
 	}
 
@@ -233,16 +233,27 @@ func (client *FastUpdatesClient) SubmitUpdates(updateProof *sortition.UpdateProo
 }
 
 func (client *FastUpdatesClient) getOnlineOfflineValues() ([]int, []float64, []float64, error) {
-	providerRawValues, err := client.valuesProvider.GetValues(client.allFeeds)
+	// Attempt to fetch values for active feeds only. The all feeds list returned by the smart contract may contain
+	// delisted feed ids marked as 0x0 (the entries are kept to not affect indexing).
+	var activeFeeds []provider.FeedId
+	var activeFeedIndexes []int
+	for i, feedId := range client.allFeeds {
+		if feedId.Name != "" {
+			activeFeeds = append(activeFeeds, feedId)
+			activeFeedIndexes = append(activeFeedIndexes, i)
+		}
+	}
+
+	providerRawValues, err := client.valuesProvider.GetValues(activeFeeds)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error getting feed values")
 	}
 
-	supportedFeedIndexes := []int{}
-	providerValues := []float64{}
+	var supportedFeedIndexes []int
+	var providerValues []float64
 	for i, value := range providerRawValues {
 		if value != nil {
-			supportedFeedIndexes = append(supportedFeedIndexes, i)
+			supportedFeedIndexes = append(supportedFeedIndexes, activeFeedIndexes[i])
 			providerValues = append(providerValues, *value)
 		}
 	}
