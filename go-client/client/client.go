@@ -164,16 +164,11 @@ func CreateFastUpdatesClient(cfg *config.Config, valuesProvider provider.ValuesP
 	}
 
 	if cfg.Client.SortitionPrivateKey == "" {
-		fastUpdatesClient.key, err = sortition.KeyGen()
-		if err != nil {
-			return nil, fmt.Errorf("CreateFastUpdatesClient: KeyGen: %w", err)
-		}
-		logger.Info("generated new private sortition key: %s", "0x"+fastUpdatesClient.key.Sk.Text(16))
-	} else {
-		fastUpdatesClient.key, err = sortition.KeyFromString(cfg.Client.SortitionPrivateKey)
-		if err != nil {
-			return nil, fmt.Errorf("CreateFastUpdatesClient: KeyGen: %w", err)
-		}
+		return nil, fmt.Errorf("CreateFastUpdatesClient: sortition_private_key must be provided via configuration")
+	}
+	fastUpdatesClient.key, err = sortition.KeyFromString(cfg.Client.SortitionPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("CreateFastUpdatesClient: KeyFromString: %w", err)
 	}
 
 	fastUpdatesClient.registeredEpochs = make(map[int64]bool)
