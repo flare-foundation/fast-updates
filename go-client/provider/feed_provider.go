@@ -98,16 +98,18 @@ func StringToDeltas(update string) []byte {
 	return deltas
 }
 
-// Sorts values according to feeds order.
+// Sorts values according to feeds order, returning nil for any
+// requested feed not present in feedValues so the caller can rely on
+// positional indexing.
 func sortFeedValues(feeds []FeedId, feedValues []FeedValue) []*float64 {
-	var values []*float64
-	for _, feed := range feeds {
-		for _, v := range feedValues {
-			if v.Feed == feed {
-				values = append(values, v.Value)
-				break
-			}
-		}
+	valuesByFeed := make(map[FeedId]*float64, len(feedValues))
+	for _, v := range feedValues {
+		valuesByFeed[v.Feed] = v.Value
+	}
+
+	values := make([]*float64, len(feeds))
+	for i, feed := range feeds {
+		values[i] = valuesByFeed[feed]
 	}
 	return values
 }

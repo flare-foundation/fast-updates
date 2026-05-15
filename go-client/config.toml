@@ -2,8 +2,12 @@
 # Use --config parameter to specify the path to the configuration file.
 
 [client]
-signing_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
-sortition_private_key = "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+# Voter signing key registered in VoterRegistry. 32-byte hex string.
+# Example: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
+signing_private_key = ""
+# Sortition key registered in VoterRegistry, used to generate verifiable
+# randomness for submission ordering. 32-byte hex string. See keygen/.
+sortition_private_key = ""
 fast_updater_address = "0x9B931f5d3e24fc8C9064DB35bDc8FB4bE0E862f9"
 fast_updates_configuration_address = "0x9A53e14B58383642cdB2bb4D5C46989F05C6B5f9"
 submission_address = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
@@ -15,11 +19,15 @@ max_weight = 512
 value_provider_url = "http://127.0.0.1:3101/feed-values/0"
 
 [transactions]
-accounts = [
-    "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
-    "0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
-    "0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131",
-]
+# Funded EOA private keys used to submit fast-update transactions.
+# Multiple accounts let the client submit in parallel for the same
+# block window. Each entry is a 32-byte hex string.
+# Example:
+# accounts = [
+#     "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+#     "0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
+# ]
+accounts = []
 gas_limit = 2500000
 value = 0
 gas_price_multiplier = 2.5
