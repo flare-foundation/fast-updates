@@ -30,7 +30,21 @@ value_provider_url = "http://127.0.0.1:3101/feed-values/0"
 accounts = []
 gas_limit = 2500000
 value = 0
-gas_price_multiplier = 2.5
+
+# Submissions are EIP-1559 (type 2) transactions. A type-2 fee cap stays valid as
+# the base fee rises, so a submission stays includable through a base-fee spike
+# within the submission window. submitAndPass is a flare-node prioritised contract
+# call (gas above a fixed nominal fee is refunded), so a generous cap costs nothing
+# extra; these values are tuned for inclusion robustness, not cost. Fee shaping:
+#   gas_tip_cap = clamp(baseFee * max_priority_fee_multiplier, minimal_max_priority_fee, maximal_max_priority_fee)
+#   gas_fee_cap = baseFee * base_fee_multiplier + gas_tip_cap
+# Values below match the flare-system-client deployment recommendation.
+# Defaults applied when unset/<=0: base_fee_multiplier = 4, max_priority_fee_multiplier = 2,
+# minimal_max_priority_fee = 100 Gwei, maximal_max_priority_fee = 5000 Gwei.
+base_fee_multiplier = 4
+max_priority_fee_multiplier = 2
+minimal_max_priority_fee = 100_000_000_000  # 100 Gwei
+maximal_max_priority_fee = 5000_000_000_000 # 5000 Gwei
 
 
 [logger]

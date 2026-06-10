@@ -61,7 +61,14 @@ fetch_current_feeds_value = "1000000000000000000000000"
 [transactions]
 gas_limit = 8000000
 value = 0
-gas_price_multiplier = 1.2
+# Submissions are EIP-1559 (type 2). gas_fee_cap = baseFee * base_fee_multiplier + gas_tip_cap,
+# gas_tip_cap = clamp(baseFee * max_priority_fee_multiplier, minimal_max_priority_fee, maximal_max_priority_fee).
+# All optional; defaults: base_fee_multiplier=4, max_priority_fee_multiplier=2,
+# minimal_max_priority_fee=100 Gwei, maximal_max_priority_fee=5000 Gwei.
+base_fee_multiplier = 4
+max_priority_fee_multiplier = 2
+minimal_max_priority_fee = 100_000_000_000
+maximal_max_priority_fee = 5000_000_000_000
 
 
 [logger]

@@ -20,7 +20,10 @@ accounts = [
 ]
 gas_limit = 2500000
 value = 0
-gas_price_multiplier = 2.5
+base_fee_multiplier = 4
+max_priority_fee_multiplier = 2
+minimal_max_priority_fee = 100_000_000_000
+maximal_max_priority_fee = 5000_000_000_000
 
 [logger]
 level = "INFO"
