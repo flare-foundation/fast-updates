@@ -65,8 +65,9 @@ func TestClient(t *testing.T) {
 		Accounts: []string{"0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
 			"0x23c601ae397441f3ef6f1075dcb0031ff17fb079837beadaf3c84d96c6f3e569",
 			"0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131"},
-		GasLimit:           80000000,
-		GasPriceMultiplier: 1.2,
+		GasLimit:                 80000000,
+		BaseFeeMultiplier:        4,
+		MaxPriorityFeeMultiplier: 2,
 	}
 	cfgLog := config.LoggerConfig{Level: "DEBUG", Console: true, File: "../logger/logs/flare-ftso-indexer_test.log"}
 

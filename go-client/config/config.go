@@ -63,11 +63,29 @@ type FastUpdateClientConfig struct {
 }
 
 type TransactionsConfig struct {
-	Accounts           []string `toml:"accounts" envconfig:"ACCOUNTS"`
-	GasLimit           int      `toml:"gas_limit"`
-	Value              int      `toml:"value"`
-	GasPriceMultiplier float64  `toml:"gas_price_multiplier"`
-	ChainId            *big.Int
+	Accounts []string `toml:"accounts" envconfig:"ACCOUNTS"`
+	GasLimit int      `toml:"gas_limit"`
+	Value    int      `toml:"value"`
+
+	// Submissions are always EIP-1559 (type 2) transactions: a type-2 fee cap stays
+	// valid as the base fee rises, so a single submission stays includable through a
+	// base-fee spike within the tight submission window. (A legacy type-0 tx commits
+	// to one fixed gas price; once the base fee climbs past it the tx is no longer
+	// includable and misses the window.) Note submitAndPass is a flare-node
+	// "prioritised contract call": the node refunds everything above a fixed nominal
+	// fee, so a generous cap costs nothing extra and the values below are tuned for
+	// inclusion robustness, not cost. The fee is shaped as:
+	//   gasTipCap = clamp(baseFee * MaxPriorityFeeMultiplier, MinimalMaxPriorityFee, MaximalMaxPriorityFee)
+	//   gasFeeCap = baseFee * BaseFeeMultiplier + gasTipCap
+	// Defaults are applied when unset/<=0 (matching flare-system-client):
+	//   BaseFeeMultiplier=4, MaxPriorityFeeMultiplier=2,
+	//   MinimalMaxPriorityFee=100 Gwei, MaximalMaxPriorityFee=5000 Gwei.
+	BaseFeeMultiplier        int64 `toml:"base_fee_multiplier"`
+	MaxPriorityFeeMultiplier int64 `toml:"max_priority_fee_multiplier"`
+	MinimalMaxPriorityFee    int64 `toml:"minimal_max_priority_fee"` // in wei
+	MaximalMaxPriorityFee    int64 `toml:"maximal_max_priority_fee"` // in wei
+
+	ChainId *big.Int
 }
 
 func newConfig() *Config {
