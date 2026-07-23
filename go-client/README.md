@@ -12,7 +12,7 @@ fast updates, to not miss the submission window.
 
 ## Prerequisites
 
-The client is implemented in Go (tested with version 1.21).
+The client is implemented in Go (requires version 1.25 or newer, see `go.mod`).
 
 ## Configuration
 
@@ -20,7 +20,7 @@ The configuration is read from a `toml` file and/or the environment variables. C
 command line parameter `--config`, e.g., `./fast-updates-client --config config.toml`. The default config file name is `config.toml`.
 Here is a list of example configuration parameters. Note that to participate as a fast updater, one must be registered at the
 FTSOv2 Top Level system (see [link](https://github.com/flare-foundation/ftso-v2-provider-deployment?tab=readme-ov-file#register-accounts)),
-where it registers its **sortition private kay** (see
+where it registers its **sortition private key** (see
 below on how to generate the sortition key).
 
 Set private information in environment variables
@@ -98,19 +98,22 @@ functionality that fits the following interface.
 
 ```go
 type ValuesProvider interface {
-	GetValues(feeds []FeedId) ([]float64, error)
+	GetValues(feeds []FeedId) ([]*float64, error)
 }
 ```
 
-See `provider/feed_provider.go` for the interface. We provide an implementation of obtaining
+See `provider/feed_provider.go` for the interface. A `nil` entry in the
+returned slice marks a feed the provider does not support; the client then
+never submits updates for it. We provide an implementation of obtaining
 feeds values based on API calls to the [FTSOv2 Example value provider](https://github.com/flare-foundation/ftso-v2-example-value-provider),
-see `provider/http_feed_provider.go`. For testing one can use also `provider/random_provider.go` for a
-price provider generating random values. When an custom implementation is provided,
-one can define in `main.go` which price provider will be used.
+see `provider/http_feed_provider.go` (the example value provider can also
+serve fixed or random test values via its `VALUE_PROVIDER_IMPL` setting).
+When a custom implementation is provided, one can define in `main.go` which
+price provider will be used.
 
 ## Running the FTSO Fast Updates Client
 
-Assuming that the configuration file and configuration environment variables ware set and
+Assuming that the configuration file and configuration environment variables were set and
 the provider is registered, simply run
 
 ```bash
@@ -187,32 +190,63 @@ is provided also in [this registration script](https://github.com/flare-foundati
 
 ## Tests
 
-### End to end test
+### End to end scenario tests
 
-See `client/client_test.go` for a test run of the client using
-a Ganache network. It is assumed that `docker` is installed for
-running a local Ganache blockchain node. The test deploys
-contracts needed for Fast Updates protocol together with a mock
-contract representing the functionality of the Flare system.
-Furthermore, the test register a fast updates provider to the
-system and runs the client submitting fast updates for a few blocks.
+The `tests/e2e` package contains a scenario test suite that exercises the
+whole client against the real Fast Updates contracts on a local Ganache chain
+(managed automatically via `docker`), with the Flare system mocked by
+`FlareSystemMock` and feed values provided by an in-process,
+scenario-controlled provider. The chain mines a block every 2 seconds by
+default — sortition alone costs ~1s per block at the test weight, so a
+faster chain outruns the client on slower machines; on a fast idle machine
+`FAST_UPDATES_E2E_BLOCK_TIME=1` roughly halves the runtime.
+
+The suite is built to catch subtle bugs in the submitted price deltas. After
+each scenario run, a verifier replays the chain block by block, independently
+of the client code, and checks that
+
+- every feed only ever moves toward the value the provider was reporting
+  (allowing for the volatility-band jitter near the target),
+- feeds without a provider value, delisted feeds, and feeds already at their
+  target never move at all,
+- no submission transaction reverted, and every update the client reports as
+  successful is actually mined on chain,
+- all feeds end the run within a few scale steps of the provider values.
+
+Every feed gets a distinct target direction and magnitude, so updates
+applied to the wrong feed index fail the run immediately. Scenarios
+cover convergence up/down, feeds unsupported by the provider (index
+alignment), a delisted (zeroed) feed id, and a feed removed and replaced
+by a new feed id at the same index while the client is running (the
+client must switch to the new feed id after its periodic feed refresh).
 
 ```bash
-go test -v client/client_test.go
+make test-e2e   # or: go test ./tests/e2e/ -v -count=1 -timeout 30m
 ```
+
+Each scenario boots a fresh chain and takes a few minutes (~12 minutes for
+the whole suite at the default block time). The suite is skipped in `-short`
+mode or when `docker` is unavailable.
+
+Note that Ganache has no working arm64 build (its arm64 image variant ships
+an amd64 binary and upstream is discontinued), so the suite always runs the
+amd64 image and needs a host able to execute it: any amd64 machine, or an
+ARM host with emulation (Docker Desktop on Apple Silicon supports this via
+Rosetta; on Linux ARM install binfmt, e.g.
+`docker run --privileged --rm tonistiigi/binfmt --install amd64`). Without
+emulation the suite skips with a message explaining this.
 
 ### Unit tests
 
-Run
-
 ```bash
-go test -v provider/feed_provider_test.go
-go test -v provider/http_feed_provider_test.go
-go test -v provider/random_provider_test.go
-go test -v sortition/sortition_test.go
+make test-unit   # or: go test ./client/ ./provider/ ./sortition/ -short -count=1
 ```
 
-for the unit tests.
+The delta computation and packing logic (`provider.GetDeltas`,
+`provider.StringToDeltas`) and the on-chain value conversion
+(`client.RawChainValuesToFloats`) have table-driven tests covering update
+directions, the volatility band, missing-feed index mapping, packing
+boundaries and negative decimals.
 
 ### Simulation of the Fast Updates protocol using multiple clients on a local Hardhat node
 
@@ -236,8 +270,8 @@ To additionally run a simulation of Fast Updates providers navigate to
 docker compose up value-provider client1 client2 client3
 ```
 
-The configuration files `tests/config1.toml`, `tests/config2.toml`,
-and `tests/config3.toml` should be set so that the clients can participate
+The configuration files `tests/configs/config1.toml`, `tests/configs/config2.toml`,
+and `tests/configs/config3.toml` should be set so that the clients can participate
 in the protocol.
 
 ## Compiled ABI of Flare-Smart-Contracts-v2
