@@ -89,7 +89,7 @@ func (p *HttpValuesProvider) post(requestBody []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error sending HTTP request")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("response status %s (Code: %d)", resp.Status, resp.StatusCode)

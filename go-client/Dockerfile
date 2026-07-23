@@ -1,5 +1,5 @@
 # build executable
-FROM golang:1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9 AS builder
+FROM golang:1.25-trixie@sha256:c699a45b4ed445f5a618233d1910f7c889dd52b831594047eff8e6a52794c814 AS builder
 
 WORKDIR /build
 
