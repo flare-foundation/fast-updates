@@ -1,24 +1,33 @@
-[tool.poetry]
+[project]
 name = "fast-updates-visualizer"
 version = "0.1.0"
 description = "Visualizer for FTSO Fast Updates on Flare"
-authors = ["dineshpinto <annual.fallout_0z@icloud.com>"]
+authors = [{ name = "dineshpinto", email = "annual.fallout_0z@icloud.com" }]
+requires-python = ">=3.12,<4"
 readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "dash>=2.15.0,<3",
+    "pandas>=2.2.0,<3",
+    "dash-bootstrap-components>=1.5.0,<2",
+]
 
+[dependency-groups]
+dev = ["ruff>=0.3.0,<0.4"]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-dash = "^2.15.0"
-pandas = "^2.2.0"
-dash-bootstrap-components = "^1.5.0"
-
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.3.0"
+[tool.uv]
+exclude-newer = "1 week"
+package = false
+default-groups = "all"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.11.13,<0.12.0"]
+build-backend = "uv_build"
 
 [tool.ruff]
 target-version = "py312"

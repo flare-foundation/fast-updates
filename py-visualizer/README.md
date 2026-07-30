@@ -2,10 +2,10 @@
 
 ## Install
 
-Using Python 3.12 and [poetry](https://python-poetry.org)
+Using Python 3.12 and [uv](https://docs.astral.sh/uv/)
 
 ```bash
-poetry install --no-root
+uv sync
 ```
 
 ## Usage
@@ -47,7 +47,7 @@ Once the client is running and a log is being created, we can visualize it with 
 ## Run
 
 ```bash
-poetry run python -m app -l ../go-client/logger/logs
+uv run python -m app -l ../go-client/logger/logs
 ```
 
 Internally the app looks for the logs folder and starts a server on a port (default: 8051).
@@ -55,5 +55,5 @@ Internally the app looks for the logs folder and starts a server on a port (defa
 To modify either of these use the `-l` and `-p` flags.
 
 ```bash
-poetry run python -m app -l <path/to/logs-folder> -p 8055
+uv run python -m app -l <path/to/logs-folder> -p 8055
 ```
