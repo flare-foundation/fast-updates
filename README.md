@@ -1,3 +1,15 @@
+<div align="center">
+  <a href="https://flare.network/" target="blank">
+    <img src="https://content.flare.network/Flare-2.svg" width="300" alt="Flare Logo" />
+  </a>
+  <br />
+  <a href="CONTRIBUTING.md">Contributing</a>
+  ·
+  <a href="SECURITY.md">Security</a>
+  ·
+  <a href="CHANGELOG.md">Changelog</a>
+</div>
+
 # FTSO Fast Updates
 
 This repo contains all the client side code associated with the new FTSO Fast Updates protocol. The Fast Updates smart contracts are pulled in from [flare-foundation/flare-smart-contracts-v2](https://github.com/flare-foundation/flare-smart-contracts-v2).
