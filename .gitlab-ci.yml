@@ -1,29 +1,108 @@
+# Run the full pipeline on both branch pushes and merge-request events,
+# but avoid duplicate runs: when there's an open MR for the branch, skip
+# the push-triggered pipeline so only the MR pipeline runs.
 workflow:
   rules:
-    - if: '$CI_OPEN_MERGE_REQUESTS != null && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
+    - if: '$CI_OPEN_MERGE_REQUESTS && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
       when: never
     - when: always
 
+stages:
+  - build
+  - test
+
 variables:
-  GOLANG_VERSION: "1.21-bookworm@sha256:c6a5b9308b3f3095e8fde83c8bf4d68bd101fce606c1a0a1394522542509dda9"
+  GOLANG_VERSION: "1.25-trixie@sha256:c699a45b4ed445f5a618233d1910f7c889dd52b831594047eff8e6a52794c814"
+  GOLINT_VERSION: "v2.12.2"
 
-# lint-ts-simulation:
-#   image: node:18
-#   before_script:
-#     - cd ts-simulation
-#   script:
-#     - yarn install --immutable
-#     - yarn lint
+.gocache:
+  variables:
+    GOPATH: ${CI_PROJECT_DIR}/.go
+  before_script:
+    - mkdir -p ${GOPATH}
+    - cd go-client
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .go/pkg/mod/
+      - .go/bin
 
-# test-ts-simulation:
-#   extends: .lint-ts-simulation
-#   before_script:
-#     - cd ts-simulation
-#   script:
-#     - yarn install --immutable
-#     - yarn test
+build-go-client:
+  stage: build
+  image: golang:${GOLANG_VERSION}
+  extends: .gocache
+  needs: []
+  script:
+    - go mod download
+    - go build ./...
+
+lint-go-client:
+  stage: test
+  needs: [build-go-client]
+  image: golangci/golangci-lint:${GOLINT_VERSION}
+  extends: .gocache
+  script:
+    - "! gofmt -l . | grep -q ."
+    - go mod tidy && git diff --exit-code go.mod go.sum
+    - golangci-lint run --timeout 5m0s
+
+test-go-client:
+  stage: test
+  needs: [build-go-client]
+  image: golang:${GOLANG_VERSION}
+  extends: .gocache
+  script:
+    # coverage denominator excludes the abigen-generated contract bindings
+    - go test -short -count=1 -timeout 5m -coverprofile=coverage.out -covermode=atomic -coverpkg=$(go list ./... | grep -v contracts-interface | paste -sd, -) ./...
+    - go tool cover -func=coverage.out | tail -1
+    - go install github.com/boumenot/gocover-cobertura@v1.5.0
+    - ${GOPATH}/bin/gocover-cobertura < coverage.out > coverage.xml
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    when: always
+    paths:
+      - go-client/coverage.out
+      - go-client/coverage.xml
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: go-client/coverage.xml
+
+# scenario suite in go-client/tests/e2e: runs the client against the real
+# contracts on a ganache chain and verifies every mined submission
+test-go-client-e2e:
+  stage: test
+  needs: [build-go-client]
+  image: golang:${GOLANG_VERSION}
+  extends: .gocache
+  services:
+    - docker:dind
+  variables:
+    GOPATH: ${CI_PROJECT_DIR}/.go
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+    # the ganache container port is published on the dind host, not localhost
+    FAST_UPDATES_E2E_RPC_HOST: docker
+  before_script:
+    - mkdir -p ${GOPATH}
+    # docker CLI for the test harness, which manages its own ganache container
+    - curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz | tar xz --strip-components=1 -C /usr/local/bin docker/docker
+    - cd go-client
+  script:
+    # the client runs in-process in the scenarios, so this coverage reflects
+    # what the release gate actually executes (generated bindings excluded)
+    - go test ./tests/e2e/ -v -count=1 -timeout 45m -coverprofile=coverage-e2e.out -covermode=atomic -coverpkg=$(go list ./... | grep -v contracts-interface | paste -sd, -)
+    - go tool cover -func=coverage-e2e.out | tail -1
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    when: always
+    paths:
+      - go-client/coverage-e2e.out
 
 lint-py-visualizer:
+  stage: test
+  needs: []
   image: python:3.12
   before_script:
     - curl -sSL https://install.python-poetry.org | python3 -
@@ -32,41 +111,3 @@ lint-py-visualizer:
   script:
     - poetry install --no-root
     - poetry run ruff check --fix
-
-lint-go-client:
-  image: golang:${GOLANG_VERSION}
-  before_script:
-    - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2
-    - cd go-client
-  script:
-    - go vet ./...
-    - go fmt ./...
-    - go mod tidy
-    - go mod verify
-    - golangci-lint run
-
-test-go-client:
-  image: golang:${GOLANG_VERSION}
-  before_script:
-    - cd go-client
-  script:
-    - go test -v provider/feed_provider_test.go
-    - go test -v sortition/sortition_test.go
-
-test-go-client-docker:
-  image: docker
-  services:
-    - docker:dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
-    GOLANG_IMAGE: "golang:${GOLANG_VERSION}"
-  before_script:
-    - cd go-client/tests
-  script:
-    - docker compose up ganache --detach
-    - VALUE_PROVIDER_IMPL=random docker compose up value-provider --detach
-    - docker compose up test-client --exit-code-from test-client
-    - docker compose stop ganache
-    - docker compose stop value-provider

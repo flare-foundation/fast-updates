@@ -3,6 +3,15 @@ GO_CLIENT_RELATIVE = ../fast-updates/go-client
 SOLC_OPTIONS = @openzeppelin/=node_modules/@openzeppelin/ flare-smart-contracts/=node_modules/flare-smart-contracts/ --evm-version london --optimize --optimize-runs 200
 CONTRACTS_FOLDER = contracts-interface
 
+test-unit:
+	go test ./client/ ./provider/ ./sortition/ -short -count=1
+
+# runs the scenario suite in tests/e2e against a dockerized ganache chain;
+# takes ~12 minutes at the default 2s block time (FAST_UPDATES_E2E_BLOCK_TIME
+# overrides it)
+test-e2e:
+	go test ./tests/e2e/ -v -count=1 -timeout 30m
+
 compile: compile-solc compile-abigen 
 
 compile-solc: compile-solc-base compile-solc-mock

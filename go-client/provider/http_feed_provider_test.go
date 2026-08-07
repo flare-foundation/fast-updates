@@ -28,6 +28,9 @@ func TestRawChainFeedsToFloats(t *testing.T) {
 }
 
 func TestGetProviderFeeds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires a value provider running on localhost:3101")
+	}
 	// Add test case
 	feedsIds := []provider.FeedId{
 		{Category: 1, Name: "BTC/USD"},

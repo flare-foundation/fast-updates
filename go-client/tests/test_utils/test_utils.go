@@ -36,8 +36,12 @@ var (
 	DURATION                 = big.NewInt(8)
 	EPOCH_LEN                = big.NewInt(1000)
 	// starting feeds hardcoded in mocked contract to be 100000
-	FEEDS_INDICES     = []*big.Int{big.NewInt(0), big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
-	SUBMISSION_WINDOW = uint8(5)
+	FEEDS_INDICES = []*big.Int{big.NewInt(0), big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
+	// the contract only answers score-cutoff queries for blocks within the
+	// submission window of the chain head; a wider window lets the client
+	// fall a few blocks behind a fast local chain (as happens on slow CI
+	// runners) without aborting
+	SUBMISSION_WINDOW = uint8(8)
 	BACKLOG_LEN       = big.NewInt(20)
 )
 

@@ -22,9 +22,10 @@ func main() {
 	config.GlobalConfigCallback.Call(cfg)
 
 	arg := os.Args[3]
-	if arg == "deploy" {
+	switch arg {
+	case "deploy":
 		test_utils.Deploy(cfg)
-	} else if arg == "register" {
+	case "register":
 		numEpoch, err := strconv.Atoi(os.Args[4])
 		if err != nil {
 			if os.Args[4] == "" {
@@ -39,7 +40,7 @@ func main() {
 			logger.Fatal("Registering error: %s", err)
 			return
 		}
-	} else if arg == "incentive" {
+	case "incentive":
 		rangeIncreaseStr := os.Args[4]
 		rangeIncrease, err := strconv.ParseFloat(rangeIncreaseStr, 64)
 		if err != nil {
