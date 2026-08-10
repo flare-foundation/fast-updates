@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v1.1.0](https://github.com/flare-foundation/fast-updates/tree/v1.1.0) - 2026-08-10
+
 ### Added
 
 - E2e scenario test suite (`go-client/tests/e2e`, `make test-e2e`) running the client against the real Fast Updates contracts on a dockerized ganache chain, driven by a scripted in-process value provider. Scenarios: convergence up/down, feeds missing from the provider or delisted on-chain, and a feed replaced by a new feed id at the same index while the client runs. An independent verifier replays the chain block by block: feeds may only move toward their provider targets, frozen feeds must not move, and no submission may revert. Replaces the old docker-compose test, whose final assertion was unreachable.
