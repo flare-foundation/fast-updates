@@ -1,91 +1,66 @@
-# Run the full pipeline on both branch pushes and merge-request events,
-# but avoid duplicate runs: when there's an open MR for the branch, skip
-# the push-triggered pipeline so only the MR pipeline runs.
+stages:
+  - test
+  - sbom
+
+default:
+  tags:
+    - flarenetwork
+  artifacts:
+    expire_in: 3 days
+
 workflow:
   rules:
-    - if: '$CI_OPEN_MERGE_REQUESTS && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
-      when: never
-    - when: always
-
-stages:
-  - build
-  - test
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_TAG
 
 variables:
   GOLANG_VERSION: "1.25-trixie@sha256:c699a45b4ed445f5a618233d1910f7c889dd52b831594047eff8e6a52794c814"
   GOLINT_VERSION: "v2.12.2"
 
-.gocache:
-  variables:
-    GOPATH: ${CI_PROJECT_DIR}/.go
-  before_script:
-    - mkdir -p ${GOPATH}
-    - cd go-client
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}
-    paths:
-      - .go/pkg/mod/
-      - .go/bin
-
-build-go-client:
-  stage: build
-  image: golang:${GOLANG_VERSION}
-  extends: .gocache
-  needs: []
-  script:
-    - go mod download
-    - go build ./...
-
-lint-go-client:
-  stage: test
-  needs: [build-go-client]
-  image: golangci/golangci-lint:${GOLINT_VERSION}
-  extends: .gocache
-  script:
-    - "! gofmt -l . | grep -q ."
-    - go mod tidy && git diff --exit-code go.mod go.sum
-    - golangci-lint run --timeout 5m0s
-
-test-go-client:
-  stage: test
-  needs: [build-go-client]
-  image: golang:${GOLANG_VERSION}
-  extends: .gocache
-  script:
-    # coverage denominator excludes the abigen-generated contract bindings
-    - go test -short -count=1 -timeout 5m -coverprofile=coverage.out -covermode=atomic -coverpkg=$(go list ./... | grep -v contracts-interface | paste -sd, -) ./...
-    - go tool cover -func=coverage.out | tail -1
-    - go install github.com/boumenot/gocover-cobertura@v1.5.0
-    - ${GOPATH}/bin/gocover-cobertura < coverage.out > coverage.xml
-  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
-  artifacts:
-    when: always
-    paths:
-      - go-client/coverage.out
-      - go-client/coverage.xml
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: go-client/coverage.xml
+include:
+  - component: gitlab.com/flarenetwork/ci-components-private/lgtm@2
+  - component: gitlab.com/flarenetwork/ci-components-private/dependency-track@2
+  - component: gitlab.com/flarenetwork/ci-components-private/lint-dockerfile@2
+  - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
+  - component: gitlab.com/flarenetwork/ci-components-private/lint-go@2
+    inputs:
+      go_project_dir: "go-client"
+      go_version: "1.25.7"
+      golangci_version: "$GOLINT_VERSION"
+      golangci_config_file: ".golangci.yml"
+  - component: gitlab.com/flarenetwork/ci-components-private/test-go@2
+    inputs:
+      go_project_dir: "go-client"
+      go_version: "1.25.7"
+      go_test_command: |
+        go test -short -count=1 -timeout 5m -coverprofile=coverage.out -covermode=atomic -coverpkg=$(go list ./... | grep -v contracts-interface | paste -sd, -) ./...
+  - component: gitlab.com/flarenetwork/ci-components-private/lint-python@2
 
 # scenario suite in go-client/tests/e2e: runs the client against the real
 # contracts on a ganache chain and verifies every mined submission
 test-go-client-e2e:
   stage: test
-  needs: [build-go-client]
+  tags: []
   image: golang:${GOLANG_VERSION}
-  extends: .gocache
   services:
     - docker:dind
   variables:
     GOPATH: ${CI_PROJECT_DIR}/.go
+    GOCACHE: ${CI_PROJECT_DIR}/.cache/go-build
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
     # the ganache container port is published on the dind host, not localhost
     FAST_UPDATES_E2E_RPC_HOST: docker
+  cache:
+    key:
+      files:
+        - go-client/go.sum
+      prefix: $CI_JOB_NAME
+    paths:
+      - .go/pkg/mod/
+      - .cache/go-build/
   before_script:
-    - mkdir -p ${GOPATH}
+    - mkdir -p ${GOPATH} ${GOCACHE}
     # docker CLI for the test harness, which manages its own ganache container
     - curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz | tar xz --strip-components=1 -C /usr/local/bin docker/docker
     - cd go-client
@@ -99,15 +74,3 @@ test-go-client-e2e:
     when: always
     paths:
       - go-client/coverage-e2e.out
-
-lint-py-visualizer:
-  stage: test
-  needs: []
-  image: python:3.12
-  before_script:
-    - curl -sSL https://install.python-poetry.org | python3 -
-    - export PATH="/root/.local/bin:$PATH"
-    - cd py-visualizer
-  script:
-    - poetry install --no-root
-    - poetry run ruff check --fix
