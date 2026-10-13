@@ -3,11 +3,12 @@ package provider
 import (
 	"bytes"
 	"encoding/json"
-	"fast-updates-client/logger"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
+
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/pkg/errors"
 )
 
 type FeedId struct {
@@ -35,7 +36,7 @@ type HttpValuesProvider struct {
 }
 
 func NewHttpValueProvider(url string) *HttpValuesProvider {
-	logger.Info("Creating new feed values provider")
+	logger.Infow("Feed values provider created")
 
 	return &HttpValuesProvider{
 		Url:        url,

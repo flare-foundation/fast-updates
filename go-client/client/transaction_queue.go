@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fast-updates-client/config"
-	"fast-updates-client/logger"
 	"fmt"
 	"math/big"
 	"sync"
@@ -12,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 )
 
 const queueLen = 50
@@ -80,7 +80,7 @@ func (txQueue *TransactionQueue) QueueExecution(i int) {
 		txQueue.Unlock()
 
 		if txQueue.toTrash {
-			logger.Info("ignoring submission")
+			logger.Infow("Dropping queued submission at epoch change")
 			txQueue.ErrChan <- nil
 			continue
 		}
@@ -91,14 +91,14 @@ func (txQueue *TransactionQueue) QueueExecution(i int) {
 
 		// again check if the transaction should be ignored
 		if txQueue.toTrash {
-			logger.Info("ignoring submission")
+			logger.Infow("Dropping queued submission at epoch change")
 			txQueue.ErrChan <- nil
 			continue
 		}
 
 		if compReq.BeforeBlock != 0 {
 			if txQueue.CurrentBlockNum > compReq.BeforeBlock {
-				err := fmt.Errorf("skipping submission, too late")
+				err := fmt.Errorf("submission for block %d too late, skipped", compReq.AfterBlock)
 				txQueue.ErrChan <- &ErrorRequest{err, compReq}
 				continue
 			}
@@ -213,7 +213,7 @@ func (txQueue *TransactionQueue) ErrorHandler() {
 		}
 		errReq := <-txQueue.ErrChan
 		if errReq != nil {
-			logger.Error("Error executing transaction: %s", errReq.Err)
+			logger.Errorw("Transaction failed", "error", errReq.Err)
 		}
 		txQueue.Lock()
 		txQueue.numInQueue--
@@ -270,7 +270,7 @@ func (txQueue *TransactionQueue) CurrentBlockNumUpdater() {
 		currentBlockNum, err := txQueue.chainClient.BlockNumber(ctx)
 		cancelFunc()
 		if err != nil {
-			logger.Error("failed obtaining current block number: %s", err)
+			logger.Errorw("Failed to get current block number", "error", err)
 			time.Sleep(200 * time.Millisecond)
 
 			continue

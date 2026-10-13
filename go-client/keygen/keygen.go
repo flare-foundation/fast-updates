@@ -7,8 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fast-updates-client/config"
-	"fast-updates-client/logger"
 	"fast-updates-client/sortition"
 	"flag"
 	"fmt"
@@ -20,6 +18,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -49,15 +48,10 @@ type sigStrings struct {
 
 func main() {
 	flag.Parse()
-	cfgLog := config.LoggerConfig{Console: true}
-	cfg := &config.Config{Logger: cfgLog}
-
-	config.GlobalConfigCallback.Call(cfg)
-
 	var keys *sortition.Key
 	var err error
 	if *InFileFlag == "" && *InFlag == "" {
-		logger.Info("No input specified, generating a new key pair.")
+		logger.Infow("No input specified, generating a new key pair")
 		keys, err = sortition.KeyGen()
 		if err != nil {
 			log.Fatal(err)
@@ -69,7 +63,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			logger.Info("Key generated: " + string(keyBytes))
+			fmt.Println(string(keyBytes))
 		} else {
 			if *PassFlag == "" {
 				log.Fatal("password should be specified to encrypt the private key")
@@ -99,7 +93,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			logger.Info("Saved key in file " + *KeyOutFlag)
+			logger.Infow("Key saved", "file", *KeyOutFlag)
 		}
 
 	} else {
@@ -144,14 +138,14 @@ func main() {
 				log.Fatal(fmt.Errorf("keys deformed"))
 			}
 
-			logger.Info("Read the key pair from " + *InFileFlag)
+			logger.Infow("Key pair read", "file", *InFileFlag)
 		} else {
 			keys, err = sortition.KeyFromString(*InFlag)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			logger.Info("Read the key from the provided flag")
+			logger.Infow("Key read from the command line")
 		}
 
 	}
@@ -188,7 +182,7 @@ func main() {
 		}
 
 		if *SigOutFlag == "" {
-			logger.Info("Signature generated: 0x" + hex.EncodeToString(sigBytes))
+			fmt.Printf("0x%x\n", sigBytes)
 		} else {
 			f, err := os.Create(*SigOutFlag)
 			if err != nil {
@@ -208,7 +202,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			logger.Info("Saved the signature in file " + *SigOutFlag)
+			logger.Infow("Signature saved", "file", *SigOutFlag)
 		}
 	} else {
 		// in the case that a key was provided but not used for the signature, just print it out
@@ -218,14 +212,14 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			logger.Info("Key: " + string(keyBytes))
+			fmt.Println(string(keyBytes))
 		}
 	}
 }
 
 func PadKey(hexKey string) string {
 	if len(hexKey) > 64 {
-		logger.Fatal("key too long")
+		logger.Fatalw("Key too long", "length", len(hexKey))
 	}
 	return "0x" + strings.Repeat("0", 64-len(hexKey)) + hexKey
 }

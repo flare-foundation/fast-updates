@@ -72,9 +72,9 @@ maximal_max_priority_fee = 5000_000_000_000
 
 
 [logger]
-level = "INFO"
-file = "./logger/logs/fast_updates_client.log"
-console = true
+level = "DEBUG"
+# logs go to standard output, format is "console" (default) or "json"
+format = "console"
 # when the balance (in WEI) of the provided accounts falls bellow this value
 # the logger will show warnings
 min_balance = 10000000000000000000

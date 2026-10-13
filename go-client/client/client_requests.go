@@ -12,11 +12,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/pkg/errors"
 
 	"fast-updates-client/config"
 	"fast-updates-client/contracts-interface/mock"
-	"fast-updates-client/logger"
 	"fast-updates-client/provider"
 	"fast-updates-client/sortition"
 	"fast-updates-client/updates"
@@ -196,7 +196,7 @@ func (client *FastUpdatesClient) GetBalances() ([]*big.Int, error) {
 func (client *FastUpdatesClient) register(epoch int64, txOpts *bind.TransactOpts) error {
 	policy := mock.FlareSystemMockPolicy{Pk1: client.key.Pk.X.Bytes(), Pk2: client.key.Pk.Y.Bytes(), Weight: uint16(1000)}
 
-	logger.Info("registering %s for epoch %d", client.signingAccount.Address, epoch)
+	logger.Infow("Registering voter", "address", client.signingAccount.Address, "epoch", epoch)
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
 	txOpts.Context = ctx
 	tx, err := client.flareSystemMock.RegisterAsVoter(txOpts, big.NewInt(int64(epoch)), client.signingAccount.Address, policy)
@@ -223,7 +223,10 @@ func (client *FastUpdatesClient) SubmitUpdates(updateProof *sortition.UpdateProo
 	beforeBlock := updateProof.BlockNumber.Uint64() + uint64(client.params.SubmissionWindow) - 1
 	compReq := ComputationRequest{
 		Function: func(txOpts *bind.TransactOpts) error {
-			return client.submitUpdates(updateProof, txOpts)
+			if err := client.submitUpdates(updateProof, txOpts); err != nil {
+				return fmt.Errorf("update for block %d replicate %d: %w", updateProof.BlockNumber, updateProof.Replicate, err)
+			}
+			return nil
 		},
 		BeforeBlock: beforeBlock,
 		AfterBlock:  updateProof.BlockNumber.Uint64(),
@@ -280,8 +283,7 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 		return err
 	}
 
-	logger.Info("chain feeds values in block %d (before update): %v", client.transactionQueue.CurrentBlockNum, chainValues)
-	logger.Info("provider feeds values: %v", providerValues)
+	logger.Infow("Feed values", "block", client.transactionQueue.CurrentBlockNum, "chain", chainValues, "provider", providerValues)
 
 	// get current scale
 	scale, err := client.GetScale()
@@ -302,7 +304,7 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 	}
 
 	// submit update
-	logger.Info("submitting update for block %d replicate %d: %s", updateProof.BlockNumber, updateProof.Replicate, deltasString)
+	logger.Infow("Submitting update", "block", updateProof.BlockNumber, "replicate", updateProof.Replicate, "deltas", deltasString)
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(config.CallTimeoutMillisDefault)*time.Millisecond)
 	txOpts.Context = ctx
 
@@ -336,7 +338,7 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 	if receipt.Status == 0 {
 		return fmt.Errorf("transaction failed")
 	}
-	logger.Info("successful update for block %d replicate %d in block %d", updateProof.BlockNumber, updateProof.Replicate, receipt.BlockNumber.Int64())
+	logger.Infow("Update included", "block", updateProof.BlockNumber, "replicate", updateProof.Replicate, "included_in_block", receipt.BlockNumber)
 	client.Stats.NumSuccessfulUpdates++
 
 	// get current prices from on-chain
@@ -344,7 +346,7 @@ func (client *FastUpdatesClient) submitUpdates(updateProof *sortition.UpdateProo
 	if err != nil {
 		return err
 	}
-	logger.Info("chain feeds values in block %d (after update): %v", receipt.BlockNumber.Int64(), chainValues)
+	logger.Infow("Feed values after update", "block", receipt.BlockNumber, "chain", chainValues)
 
 	return nil
 }

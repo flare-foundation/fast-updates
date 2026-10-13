@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"math"
-	"strconv"
 
 	"fast-updates-client/client"
 	"fast-updates-client/config"
@@ -14,7 +13,6 @@ import (
 	"fast-updates-client/contracts-interface/fee_calculator"
 	"fast-updates-client/contracts-interface/incentive"
 	"fast-updates-client/contracts-interface/mock"
-	"fast-updates-client/logger"
 	"log"
 	"math/big"
 
@@ -24,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 )
 
 var (
@@ -76,7 +75,7 @@ func Register(cfg *config.Config, numEpochs int) error {
 func Deploy(cfg *config.Config) ContractAddresses {
 	client, err := ethclient.Dial(cfg.Chain.NodeURL)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	privateKey := cfg.Transactions.Accounts[0]
 	if privateKey[:2] == "0x" {
@@ -84,29 +83,29 @@ func Deploy(cfg *config.Config) ContractAddresses {
 	}
 	privateKeyECDSA, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	publicKey := privateKeyECDSA.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		logger.Fatal("error casting public key to ECDSA")
+		logger.Fatalf("error casting public key to ECDSA")
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKeyECDSA, big.NewInt(int64(cfg.Chain.ChainId)))
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	opts.Nonce = big.NewInt(int64(nonce))
 	opts.Value = big.NewInt(int64(cfg.Transactions.Value))
@@ -115,84 +114,84 @@ func Deploy(cfg *config.Config) ContractAddresses {
 
 	mockAddress, _, _, err := mock.DeployMock(opts, client, big.NewInt(1), EPOCH_LEN)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
-	logger.Info("mock contract address %s", mockAddress.Hex())
+	logger.Infof("mock contract address %s", mockAddress.Hex())
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	incentiveAddress, _, _, err := incentive.DeployIncentive(
 		opts, client, fromAddress, fromAddress, fromAddress, BASE_SAMPLE_SIZE, BASE_RANGE,
 		SAMPLE_INCREASE_LIMIT, RANGE_INCREASE_LIMIT, SAMPLE_INCREASE_PRICE, RANGE_INCREASE_PRICE, DURATION)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
-	logger.Info("incentiveManager address %s", incentiveAddress.Hex())
+	logger.Infof("incentiveManager address %s", incentiveAddress.Hex())
 
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	block, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	fastUpdaterAddress, tx, _, err := fast_updater.DeployFastUpdater(opts, client, fromAddress, fromAddress,
 		fromAddress, fromAddress, uint32(block.Time()), 90, SUBMISSION_WINDOW)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err := bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
-	logger.Info("fastUpdater address %s", fastUpdaterAddress.Hex())
+	logger.Infof("fastUpdater address %s", fastUpdaterAddress.Hex())
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	fastUpdatesConfigurationAddress, tx, _, err := fast_updates_configuration.DeployFastUpdatesConfiguration(opts, client, fromAddress, fromAddress, fromAddress)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
-	logger.Info("fastUpdatesConfiguration address %s", fastUpdatesConfigurationAddress.Hex())
+	logger.Infof("fastUpdatesConfiguration address %s", fastUpdatesConfigurationAddress.Hex())
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	feeCalculatorAddress, tx, _, err := fee_calculator.DeployFeeCalculator(opts, client, fromAddress, fromAddress, fromAddress, big.NewInt(1))
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
-	logger.Info("feeCalculator address %s", feeCalculatorAddress.Hex())
+	logger.Infof("feeCalculator address %s", feeCalculatorAddress.Hex())
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	feeCalculatorContract, err := fee_calculator.NewFeeCalculator(feeCalculatorAddress, client)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	addressesHash := []string{
@@ -215,24 +214,24 @@ func Deploy(cfg *config.Config) ContractAddresses {
 	}
 	tx, err = feeCalculatorContract.UpdateContractAddresses(opts, addressesBytes, addresses)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	fastUpdaterContract, err := fast_updater.NewFastUpdater(fastUpdaterAddress, client)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	addressesHash = []string{
@@ -266,24 +265,24 @@ func Deploy(cfg *config.Config) ContractAddresses {
 	}
 	tx, err = fastUpdaterContract.UpdateContractAddresses(opts, addressesBytes, addresses)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	fastUpdatesConfigurationContract, err := fast_updates_configuration.NewFastUpdatesConfiguration(fastUpdatesConfigurationAddress, client)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	addressesHash = []string{
@@ -308,24 +307,24 @@ func Deploy(cfg *config.Config) ContractAddresses {
 
 	tx, err = fastUpdatesConfigurationContract.UpdateContractAddresses(opts, addressesBytes, addresses)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	incentiveContract, err := incentive.NewIncentive(incentiveAddress, client)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	addressesHash = []string{
@@ -358,18 +357,18 @@ func Deploy(cfg *config.Config) ContractAddresses {
 
 	tx, err = incentiveContract.UpdateContractAddresses(opts, addressesBytes, addresses)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
@@ -382,42 +381,42 @@ func Deploy(cfg *config.Config) ContractAddresses {
 
 	tx, err = fastUpdatesConfigurationContract.AddFeeds(opts, feedsConfigurations)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err = bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	numFeedsCheck, err := fastUpdatesConfigurationContract.GetNumberOfFeeds(nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	if int(numFeedsCheck.Int64()) != len(FEEDS_INDICES) {
-		logger.Fatal("Error: Wrong number of feeds: %d != %d", numFeedsCheck.Int64(), len(FEEDS_INDICES))
+		logger.Fatalf("Error: Wrong number of feeds: %d != %d", numFeedsCheck.Int64(), len(FEEDS_INDICES))
 	}
 
-	logger.Info("Contracts deployed, wait " + strconv.Itoa(int(SUBMISSION_WINDOW)) + " blocks for the daemon to set thresholds")
+	logger.Infof("Contracts deployed, wait %d blocks for the daemon to set thresholds", SUBMISSION_WINDOW)
 	for i := 0; i < int(SUBMISSION_WINDOW+1); i++ {
 		tx, err = fastUpdaterContract.Daemonize(opts)
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
 		rec, err := bind.WaitMined(context.Background(), client, tx)
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Info("block mined %s", rec.BlockNumber.String())
+		logger.Infof("block mined %s", rec.BlockNumber.String())
 		// reason, err := GetFailingMessage(*client, tx.Hash())
 
 		opts.Nonce.Add(opts.Nonce, big.NewInt(1))
@@ -464,7 +463,7 @@ func GetFailingMessage(client ethclient.Client, hash common.Hash) (string, error
 func Incentivize(cfg *config.Config, rangeIncrease float64, sampleCost *big.Int) {
 	client, err := ethclient.Dial(cfg.Chain.NodeURL)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	privateKey := cfg.Transactions.Accounts[0]
 	if privateKey[:2] == "0x" {
@@ -472,29 +471,29 @@ func Incentivize(cfg *config.Config, rangeIncrease float64, sampleCost *big.Int)
 	}
 	privateKeyECDSA, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	publicKey := privateKeyECDSA.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		logger.Fatal("error casting public key to ECDSA")
+		logger.Fatalf("error casting public key to ECDSA")
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKeyECDSA, big.NewInt(int64(cfg.Chain.ChainId)))
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	opts.Nonce = big.NewInt(int64(nonce))
 	opts.Value = big.NewInt(int64(cfg.Transactions.Value))
@@ -503,72 +502,72 @@ func Incentivize(cfg *config.Config, rangeIncrease float64, sampleCost *big.Int)
 
 	incentiveInterface, err := incentive.NewIncentive(common.HexToAddress(cfg.Client.IncentiveManagerAddress), client)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 
 	rangeInt, err := incentiveInterface.GetRange(nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	rangeFloat, _ := rangeInt.Float64()
 	rangeFloat = rangeFloat / math.Pow(2, 120)
 	increase := rangeFloat * rangeIncrease
 	increaseBigFloat := new(big.Float).SetFloat64(increase)
-	logger.Info("current range %f, increasing for %f", rangeFloat, increase)
+	logger.Infof("current range %f, increasing for %f", rangeFloat, increase)
 	increaseBigFloat.Mul(increaseBigFloat, big.NewFloat(math.Pow(2, 120)))
 	increaseBigInt, _ := increaseBigFloat.Int(nil)
 
 	rangeIncreasePrice, err := incentiveInterface.RangeIncreasePrice(nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	price := new(big.Int).Mul(rangeIncreasePrice, increaseBigInt)
 	price.Rsh(price, 120)
 	priceFloat, _ := price.Float64()
 
-	logger.Info("price for range increase %f wei", priceFloat)
+	logger.Infof("price for range increase %f wei", priceFloat)
 	maxRange := new(big.Int).Exp(big.NewInt(2), big.NewInt(127), nil)
 
 	sampleSizeInt, err := incentiveInterface.GetExpectedSampleSize(nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	sampleFloat, _ := sampleSizeInt.Float64()
 	sampleFloat = sampleFloat / math.Pow(2, 120)
 	sampleCostFloat, _ := sampleCost.Float64()
-	logger.Info("current sample size %f, increasing for price of %f wei", sampleFloat, sampleCostFloat)
+	logger.Infof("current sample size %f, increasing for price of %f wei", sampleFloat, sampleCostFloat)
 
 	offer := incentive.IFastUpdateIncentiveManagerIncentiveOffer{RangeIncrease: increaseBigInt, RangeLimit: maxRange}
 	opts.Value = new(big.Int).Add(price, sampleCost)
 	tx, err := incentiveInterface.OfferIncentive(opts, offer)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	receipt, err := bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
-			logger.Fatal("Error: %s", err)
+			logger.Fatalf("Error: %s", err)
 		}
-		logger.Fatal("Error: Transaction fail: %s", reason)
+		logger.Fatalf("Error: Transaction fail: %s", reason)
 	}
 	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
 
 	rangeInt, err = incentiveInterface.GetRange(nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	rangeFloat, _ = rangeInt.Float64()
 	rangeFloat = rangeFloat / math.Pow(2, 120)
 	sampleSizeInt, err = incentiveInterface.GetExpectedSampleSize(nil)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
+		logger.Fatalf("Error: %s", err)
 	}
 	sampleFloat, _ = sampleSizeInt.Float64()
 	sampleFloat = sampleFloat / math.Pow(2, 120)
-	logger.Info("range after transaction %f, sample size after transaction %f", rangeFloat, sampleFloat)
+	logger.Infof("range after transaction %f, sample size after transaction %f", rangeFloat, sampleFloat)
 
 }

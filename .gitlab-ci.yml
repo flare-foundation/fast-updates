@@ -13,7 +13,7 @@ workflow:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_TAG
 
 variables:
-  GOLANG_VERSION: "1.25-trixie@sha256:c699a45b4ed445f5a618233d1910f7c889dd52b831594047eff8e6a52794c814"
+  GOLANG_VERSION: "1.25.14-trixie@sha256:2c4c60ef415fbfa5e90300722293bef36c5e63fae17570ce18f580af933dbd73"
   GOLINT_VERSION: "v2.12.2"
 
 include:
@@ -24,13 +24,13 @@ include:
   - component: gitlab.com/flarenetwork/ci-components-private/lint-go@2
     inputs:
       go_project_dir: "go-client"
-      go_version: "1.25.7"
+      go_version: "1.25.14"
       golangci_version: "$GOLINT_VERSION"
       golangci_config_file: ".golangci.yml"
   - component: gitlab.com/flarenetwork/ci-components-private/test-go@2
     inputs:
       go_project_dir: "go-client"
-      go_version: "1.25.7"
+      go_version: "1.25.14"
       go_test_command: |
         go test -short -count=1 -timeout 5m -coverprofile=coverage.out -covermode=atomic -coverpkg=$(go list ./... | grep -v contracts-interface | paste -sd, -) ./...
   - component: gitlab.com/flarenetwork/ci-components-private/lint-python@2

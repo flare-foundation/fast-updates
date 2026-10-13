@@ -8,8 +8,9 @@ import (
 	"strconv"
 
 	"fast-updates-client/config"
-	"fast-updates-client/logger"
 	"fast-updates-client/tests/test_utils"
+
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 		fmt.Println("Config error: %w", err)
 		return
 	}
-	config.GlobalConfigCallback.Call(cfg)
+	logger.Set(cfg.Logger.Config)
 
 	arg := os.Args[3]
 	switch arg {
@@ -31,20 +32,20 @@ func main() {
 			if os.Args[4] == "" {
 				numEpoch = 1
 			} else {
-				logger.Fatal("Config error: %s", err)
+				logger.Fatalf("Config error: %s", err)
 				return
 			}
 		}
 		err = test_utils.Register(cfg, numEpoch)
 		if err != nil {
-			logger.Fatal("Registering error: %s", err)
+			logger.Fatalf("Registering error: %s", err)
 			return
 		}
 	case "incentive":
 		rangeIncreaseStr := os.Args[4]
 		rangeIncrease, err := strconv.ParseFloat(rangeIncreaseStr, 64)
 		if err != nil {
-			logger.Fatal("Incentive error: %s", err)
+			logger.Fatalf("Incentive error: %s", err)
 			return
 		}
 
@@ -56,7 +57,7 @@ func main() {
 		} else {
 			sampleCost, check = new(big.Int).SetString(sampleCostStr, 10)
 			if !check {
-				logger.Fatal("Could not read sample cost")
+				logger.Fatalf("Could not read sample cost")
 				return
 			}
 		}

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Logging (breaking):** the client and keygen log to standard output only, in the go-flare-common log format. The new `logger.format` key selects `console` (default) or `json`. The `logger.file`, `logger.max_file_size` and `logger.console` keys are ignored and listed in an INFO line at startup. Deployments that read the log file must collect standard output instead.
+- **Logging (breaking):** log entries are structured. Messages are fixed and values such as block, replicate, epoch, weight and feed values are separate fields. Chain and provider feed values are logged together in one `Feed values` entry. Log parsers that match the old message text must be updated.
+- keygen prints the generated key and signature as plain output lines instead of log entries.
+- Example `config.toml` ships with `logger.level = "DEBUG"`.
+- The py-visualizer reads the client's `json` log output saved to a file.
+
 ## [v1.1.0](https://github.com/flare-foundation/fast-updates/tree/v1.1.0) - 2026-08-10
 
 ### Added
