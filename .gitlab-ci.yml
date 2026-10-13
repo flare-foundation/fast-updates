@@ -41,7 +41,9 @@ include:
 # contracts on a ganache chain and verifies every mined submission
 test-go-client-e2e:
   stage: test
-  tags: []
+  # GitLab's shared runners run the privileged docker:dind service, the
+  # flarenetwork Kubernetes runner does not
+  tags: [saas-linux-small-amd64]
   image: golang:${GOLANG_VERSION}
   services:
     - docker:dind
