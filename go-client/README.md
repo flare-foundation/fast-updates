@@ -12,7 +12,7 @@ fast updates, to not miss the submission window.
 
 ## Prerequisites
 
-The client is implemented in Go (requires version 1.25 or newer, see `go.mod`).
+The client is implemented in Go (requires version 1.27 or newer, see `go.mod`).
 
 ## Configuration
 
