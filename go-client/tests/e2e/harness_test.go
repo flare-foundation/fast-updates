@@ -14,11 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	"fast-updates-client/client"
 	"fast-updates-client/config"
 	"fast-updates-client/contracts-interface/fast_updates_configuration"
-	"fast-updates-client/logger"
 	"fast-updates-client/tests/test_utils"
 )
 
@@ -130,16 +130,16 @@ func NewTestEnv(t *testing.T) *TestEnv {
 			MaxPriorityFeeMultiplier: 2,
 		},
 		Chain:  config.ChainConfig{NodeURL: nodeURL(), ChainId: chainId},
-		Logger: config.LoggerConfig{Level: "INFO", Console: true, File: "../../logger/logs/e2e_test.log"},
+		Logger: config.LoggerConfig{Config: logger.Config{Level: "INFO"}},
 	}
-	config.GlobalConfigCallback.Call(*cfg)
+	logger.Set(cfg.Logger.Config)
 
 	ethClient, err := ethclient.Dial(nodeURL())
 	if err != nil {
 		t.Fatalf("dialing ganache: %v", err)
 	}
 
-	logger.Info("deploying contracts")
+	logger.Infof("deploying contracts")
 	// deploy from the governance account (test_utils.Deploy uses account 0),
 	// keeping it disjoint from the client's transaction accounts
 	deployCfg := *cfg
@@ -151,7 +151,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	cfg.Client.MockAddress = contracts.Mock.Hex()
 	cfg.Client.IncentiveManagerAddress = contracts.IncentiveManager.Hex()
 
-	logger.Info("registering voter for this and next epoch")
+	logger.Infof("registering voter for this and next epoch")
 	if err := test_utils.Register(cfg, 2); err != nil {
 		t.Fatalf("registering voter: %v", err)
 	}

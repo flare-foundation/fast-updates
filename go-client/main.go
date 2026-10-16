@@ -3,40 +3,32 @@ package main
 import (
 	"fast-updates-client/client"
 	"fast-updates-client/config"
-	"fast-updates-client/logger"
 	"fast-updates-client/provider"
 	"flag"
-	"fmt"
-	"os"
 	"time"
+
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 )
 
 func main() {
 	flag.Parse()
 	cfg, err := config.BuildConfig()
 	if err != nil {
-		fmt.Printf("Config error: %v\n", err)
-		os.Exit(1)
+		logger.Fatalw("Invalid configuration", "error", err)
 	}
-	config.GlobalConfigCallback.Call(cfg)
+	logger.Set(cfg.Logger.Config)
 
 	valuesProvider := provider.NewHttpValueProvider(cfg.Client.ValueProviderUrl)
-	if err != nil {
-		logger.Fatal("Error: %s", err)
-		return
-	}
 
 	client, err := client.CreateFastUpdatesClient(cfg, valuesProvider)
 	if err != nil {
-		logger.Fatal("Error: %s", err)
-		return
+		logger.Fatalw("Failed to create client", "error", err)
 	}
 
 	for {
 		err = client.Run(0, 0)
 		if err != nil {
-			logger.Error("Error: %s", err)
-			logger.Info("Restarting")
+			logger.Errorw("Client loop failed, restarting", "error", err)
 		}
 		time.Sleep(200 * time.Millisecond)
 	}

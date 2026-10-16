@@ -13,8 +13,8 @@ workflow:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_TAG
 
 variables:
-  GOLANG_VERSION: "1.25-trixie@sha256:c699a45b4ed445f5a618233d1910f7c889dd52b831594047eff8e6a52794c814"
-  GOLINT_VERSION: "v2.12.2"
+  GOLANG_VERSION: "1.27.2-trixie@sha256:47667934874913a449b96faa7ef4777fa285d9ec29126ee80ed61c45b7cccf0e"
+  GOLINT_VERSION: "v2.14.0"
 
 include:
   - component: gitlab.com/flarenetwork/ci-components-private/lgtm@2
@@ -24,13 +24,15 @@ include:
   - component: gitlab.com/flarenetwork/ci-components-private/lint-go@2
     inputs:
       go_project_dir: "go-client"
-      go_version: "1.25.7"
+      go_version: "1.27.2"
       golangci_version: "$GOLINT_VERSION"
       golangci_config_file: ".golangci.yml"
   - component: gitlab.com/flarenetwork/ci-components-private/test-go@2
     inputs:
       go_project_dir: "go-client"
-      go_version: "1.25.7"
+      go_version: "1.27.2"
+      # the coverage converter runs inside go-client, so it needs the go.mod Go version
+      cobertura_go_version: "1.27.2"
       go_test_command: |
         go test -short -count=1 -timeout 5m -coverprofile=coverage.out -covermode=atomic -coverpkg=$(go list ./... | grep -v contracts-interface | paste -sd, -) ./...
   - component: gitlab.com/flarenetwork/ci-components-private/lint-python@2
@@ -39,7 +41,9 @@ include:
 # contracts on a ganache chain and verifies every mined submission
 test-go-client-e2e:
   stage: test
-  tags: []
+  # GitLab's shared runners run the privileged docker:dind service, the
+  # flarenetwork Kubernetes runner does not
+  tags: [saas-linux-small-amd64]
   image: golang:${GOLANG_VERSION}
   services:
     - docker:dind

@@ -9,20 +9,16 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 )
 
 var (
-	CallTimeoutMillisDefault int                          = 2000   // todo
-	TxTimeoutMillisDefault   int                          = 120000 // todo
-	GlobalConfigCallback     ConfigCallback[GlobalConfig] = ConfigCallback[GlobalConfig]{}
-	CfgFlag                                               = flag.String("config", "config.toml", "Configuration file (toml format)")
+	CallTimeoutMillisDefault int = 2000   // todo
+	TxTimeoutMillisDefault   int = 120000 // todo
+	CfgFlag                      = flag.String("config", "config.toml", "Configuration file (toml format)")
 )
-
-type GlobalConfig interface {
-	LoggerConfig() LoggerConfig
-}
 
 type Config struct {
 	Logger       LoggerConfig           `toml:"logger"`
@@ -32,10 +28,7 @@ type Config struct {
 }
 
 type LoggerConfig struct {
-	Level         string  `toml:"level"` // valid values are: DEBUG, INFO, WARN, ERROR, DPANIC, PANIC, FATAL (zap)
-	File          string  `toml:"file"`
-	MaxFileSize   int     `toml:"max_file_size"` // In megabytes
-	Console       bool    `toml:"console"`
+	logger.Config
 	MinBalance    float64 `toml:"min_balance"`
 	FeedValuesLog int     `toml:"feed_values_log"`
 }
@@ -133,10 +126,6 @@ func ReadEnv(cfg *Config) error {
 	}
 
 	return nil
-}
-
-func (c Config) LoggerConfig() LoggerConfig {
-	return c.Logger
 }
 
 func validateConfig(cfg *Config) error {

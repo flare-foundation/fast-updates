@@ -1,6 +1,6 @@
 #checkov:skip=CKV_DOCKER_2: Healthcheck instruction not required
 # build executable
-FROM golang:1.25-trixie@sha256:c699a45b4ed445f5a618233d1910f7c889dd52b831594047eff8e6a52794c814 AS builder
+FROM golang:1.27.2-trixie@sha256:47667934874913a449b96faa7ef4777fa285d9ec29126ee80ed61c45b7cccf0e AS builder
 
 WORKDIR /build
 

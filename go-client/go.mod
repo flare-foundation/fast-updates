@@ -1,16 +1,15 @@
 module fast-updates-client
 
-go 1.25.7
+go 1.27.2
 
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/consensys/gnark-crypto v0.20.1
 	github.com/ethereum/go-ethereum v1.17.4
+	github.com/flare-foundation/go-flare-common v1.4.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/pkg/errors v0.9.1
-	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.54.0
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	golang.org/x/crypto v0.55.0
 )
 
 require (
@@ -40,7 +39,6 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

@@ -12,7 +12,7 @@ uv sync
 
 This app enables to visualize the fast updates that an instance of the Fast Updates client is submitting and logging in the logs folder. This way the data provider can visualize the effect of its fast updates and monitor the updates of others.
 
-It __needs a running Go client__ that is logging its actions in a file.
+It __needs a running Go client__ whose output is saved to a file.
 
 ### Setting and running the go-client
 
@@ -25,7 +25,8 @@ docker compose up value-provider
 The go client can be started with the following command (from `../go-client`) after setting up the configuration file `config.toml`:
 
 ```bash
-go run main.go --config config.toml
+mkdir -p logs
+go run main.go --config config.toml | tee logs/fast_updates_client.log
 ```
 
 By default the go-client will log current onchain and feed provider values
@@ -36,18 +37,17 @@ onchain values. For example, set
 ```toml
 [logger]
 level = "INFO"
-file = "./logger/logs/fast_updates_client.log"
-console = true
+format = "json"
 feed_values_log = 5
 ```
-to log values every 5 blocks.
+to log values every 5 blocks. The visualizer reads the `json` log format.
 
 Once the client is running and a log is being created, we can visualize it with the python app.
 
 ## Run
 
 ```bash
-uv run python -m app -l ../go-client/logger/logs
+uv run python -m app -l ../go-client/logs
 ```
 
 Internally the app looks for the logs folder and starts a server on a port (default: 8051).

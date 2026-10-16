@@ -60,3 +60,12 @@ func CheckBalances(balances []*big.Int, minBalance float64) bool {
 
 	return true
 }
+
+// feedNames returns the feed names in on-chain order. Delisted feeds have an empty name.
+func feedNames(feeds []provider.FeedId) []string {
+	names := make([]string, len(feeds))
+	for i, feed := range feeds {
+		names[i] = feed.Name
+	}
+	return names
+}

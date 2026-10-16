@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	"fast-updates-client/config"
 	"fast-updates-client/contracts-interface/fast_updater"
@@ -18,7 +19,6 @@ import (
 	"fast-updates-client/contracts-interface/mock"
 	"fast-updates-client/contracts-interface/submission"
 	"fast-updates-client/contracts-interface/system_manager"
-	"fast-updates-client/logger"
 	"fast-updates-client/provider"
 	"fast-updates-client/sortition"
 )
@@ -219,21 +219,21 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 
 	weight, err := client.GetMyWeight()
 	if err != nil {
-		logger.Error("error getting weight %s", fmt.Errorf("Run: GetMyWeight: %w", err))
+		logger.Errorw("Failed to get weight", "error", err)
 	}
 	weight = min(weight, uint64(client.params.MaxWeight))
-	logger.Info("staring block %d, epoch %d, my weight %d", blockNum, epoch, weight)
+	logger.Infow("Client started", "block", blockNum, "epoch", epoch, "weight", weight)
 
 	client.allFeeds, err = client.GetCurrentFeedIds()
 	if err != nil {
 		return fmt.Errorf("Run: GetCurrentFeedIds: %w", err)
 	}
-	logger.Info("Fetched feed ids: %v", client.allFeeds)
+	logger.Infow("Feed ids fetched", "feeds", feedNames(client.allFeeds))
 
 	for {
 		err = client.UpdateFastUpdaterContractAddress()
 		if err != nil {
-			logger.Error("Failed attempt in updating the FastUpdater contract address: %s", err)
+			logger.Errorw("Failed to update the FastUpdater address", "error", err)
 		}
 
 		if blockNum%refreshFeedsBlockInterval == 0 {
@@ -260,7 +260,7 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 			epoch = epochCheck
 			weight, err = client.GetMyWeight()
 			if err != nil {
-				logger.Error("error getting weight %s", fmt.Errorf("Run: GetMyWeight: %w", err))
+				logger.Errorw("Failed to get weight", "error", err)
 			}
 			weight = min(weight, uint64(client.params.MaxWeight))
 			if weight == 0 {
@@ -271,7 +271,7 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 			if err != nil {
 				return fmt.Errorf("Run: GetCurrentSeed: %w", err)
 			}
-			logger.Info("new epoch, my weight weight %d, current block %d", weight, blockNum)
+			logger.Infow("New reward epoch", "block", blockNum, "epoch", epoch, "weight", weight)
 		}
 
 		cutoff, err := client.GetBlockScoreCutoffWithRepeats(blockNum)
@@ -284,7 +284,7 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 			return fmt.Errorf("Run: FindUpdateProofs: %w", err)
 		}
 		for _, updateProof := range updateProofs {
-			logger.Info("scheduling update for block %d replicate %d", updateProof.BlockNumber, updateProof.Replicate)
+			logger.Infow("Scheduling update", "block", updateProof.BlockNumber, "replicate", updateProof.Replicate)
 			client.SubmitUpdates(updateProof)
 			client.Stats.NumUpdates++
 		}
@@ -292,20 +292,19 @@ func (client *FastUpdatesClient) Run(startBlock, endBlock uint64) error {
 		if len(updateProofs) > 0 {
 			balances, err := client.GetBalances()
 			if err != nil {
-				logger.Error("could not obtain balances: %s", err)
+				logger.Errorw("Failed to get balances", "error", err)
 			}
 			if !CheckBalances(balances, client.loggingParams.MinBalance) {
-				logger.Warn("account balance low: %s", balances)
+				logger.Warnw("Account balance low", "balances", balances, "min_balance", client.loggingParams.MinBalance)
 			}
 		}
 
 		if client.loggingParams.FeedValuesLog != 0 && blockNum%uint64(client.loggingParams.FeedValuesLog) == 0 {
 			_, chainValues, providerValues, err := client.getOnlineOfflineValues()
 			if err != nil {
-				logger.Error("failed obtaining feed values %s", err)
+				logger.Errorw("Failed to get feed values", "error", err)
 			} else {
-				logger.Info("chain feeds values in block %d: %v", blockNum, chainValues)
-				logger.Info("provider feeds values: %v", providerValues)
+				logger.Infow("Feed values", "block", blockNum, "chain", chainValues, "provider", providerValues)
 			}
 		}
 
@@ -365,7 +364,7 @@ func (client *FastUpdatesClient) UpdateFastUpdaterContractAddress() error {
 		}
 
 		client.params.FastUpdaterAddress = newAddress.Hex()
-		logger.Info("Updated the FastUpdater address to %s", client.params.FastUpdaterAddress)
+		logger.Infow("FastUpdater address updated", "address", client.params.FastUpdaterAddress)
 	}
 
 	return nil

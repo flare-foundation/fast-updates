@@ -1,5 +1,6 @@
-import re
+import json
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from pathlib import Path
 
 import pandas as pd
@@ -48,6 +49,20 @@ class LogfileIOHandler(IOHandler):
 
         return log_path
 
+    def get_entries(self) -> Iterator[dict]:
+        """
+        Read the Go client log entries. The client must log in the json format.
+
+        Yields:
+            dict: One parsed log entry per line. Lines that are not JSON are skipped.
+        """
+        with open(self.get_log_path()) as file:
+            for line in file:
+                try:
+                    yield json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
     def get_provider_status(self) -> dict[int, bool]:
         """
         Retrieve the status of provider based on the contents of the file
@@ -58,19 +73,12 @@ class LogfileIOHandler(IOHandler):
             and their associated block numbers. The status is represented as a boolean
             value, where True indicates a failure and False indicates success.
         """
-        provider_path = self.get_log_path()
-
         status = {}
-
-        with open(provider_path) as file:
-            block_number = None
-            for line in file.readlines():
-                if "scheduling update" in line:
-                    block_number = re.findall(r"\d+", line)[7]
-                    status[block_number] = True
-                if "successful update for block" in line:
-                    block_number = re.findall(r"\d+", line)[7]
-                    status[block_number] = False
+        for entry in self.get_entries():
+            if entry.get("msg") == "Scheduling update":
+                status[str(entry["block"])] = True
+            elif entry.get("msg") == "Update included":
+                status[str(entry["block"])] = False
         return status
 
     def get_price_feeds(self) -> pd.DataFrame:
@@ -80,29 +88,19 @@ class LogfileIOHandler(IOHandler):
         Returns:
             pd.DataFrame: A DataFrame containing the parsed price feeds data.
         """
-        filepath = self.get_log_path()
-
         block_numbers, fast_update_feeds, actual_feeds = [], [], []
-        with open(filepath) as file:
-            for line in file.readlines():
-                # new block number + fast update feeds
-                if "chain feeds" in line and "after update" not in line:
-                    nums = re.findall(r"(?:\d+\.)?\d*(?:e?-?\d+)", line)
-                    block_numbers.append(int(nums[5]))
-                    fast_update_feeds.append([float(num) for num in nums[6:]])
+        for entry in self.get_entries():
+            # on-chain and provider values in a block
+            if entry.get("msg") == "Feed values":
+                block_numbers.append(entry["block"])
+                fast_update_feeds.append(entry["chain"])
+                actual_feeds.append(entry["provider"])
 
-                # get actual feeds for new block
-                elif "provider feeds values" in line:
-                    nums = re.findall(r"(?:\d+\.)?\d*(?:e?-?\d+)", line)
-                    num_feeds = len(fast_update_feeds[0])
-                    actual_feeds.append([float(num) for num in nums[5 : num_feeds + 5]])
-
-                # write down chain values after update
-                elif "after update" in line:
-                    nums = re.findall(r"(?:\d+\.)?\d*(?:e?-?\d+)", line)
-                    block_numbers.append(int(nums[5]))
-                    fast_update_feeds.append([float(num) for num in nums[6:]])
-                    actual_feeds.append([None for _ in nums[6:]])
+            # on-chain values after an update, without provider values
+            elif entry.get("msg") == "Feed values after update":
+                block_numbers.append(entry["block"])
+                fast_update_feeds.append(entry["chain"])
+                actual_feeds.append([None for _ in entry["chain"]])
 
         # Convert to DataFrame
         df = pd.DataFrame(fast_update_feeds)
@@ -129,16 +127,10 @@ class LogfileIOHandler(IOHandler):
         Returns:
             dict[int, str]: A dictionary mapping feed indices to their names.
         """
-        filepath = self.get_log_path()
-
-        feed_names = {}
-        with open(filepath) as file:
-            for line in file.readlines():
-                if "Fetched feed ids" in line:
-                    # the regex pattern is AAA(A)/AAA(A)
-                    feed_names = re.findall(r"[A-Z]{3,4}\/[A-Z]{3,4}", line)
-                    feed_names = {
-                        idx: f"{idx} - " + name for idx, name in enumerate(feed_names)
-                    }
-                    break
-        return feed_names
+        for entry in self.get_entries():
+            if entry.get("msg") == "Feed ids fetched":
+                return {
+                    idx: f"{idx} - {name or 'delisted'}"
+                    for idx, name in enumerate(entry["feeds"])
+                }
+        return {}
